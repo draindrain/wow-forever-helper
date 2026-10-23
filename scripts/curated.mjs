@@ -1,0 +1,171 @@
+// Hand-maintained facts that aren't in a machine-readable Forever source.
+// Each entry names where it came from; `confirmed: false` marks values carried
+// over from Classic that no Forever source has confirmed yet. Update these as
+// Blizzard publishes more.
+
+// Talent trees per class. `school` is the spellbook tab (and talent tree) name
+// the Forever client uses, which differs from the tree's usual name in two cases.
+export const SPECS = {
+  warrior: [
+    { id: 'arms', name: 'Arms', school: 'Arms', role: 'Damage' },
+    { id: 'fury', name: 'Fury', school: 'Fury', role: 'Damage' },
+    { id: 'protection', name: 'Protection', school: 'Protection', role: 'Tank' },
+  ],
+  paladin: [
+    { id: 'holy', name: 'Holy', school: 'Holy', role: 'Healer' },
+    { id: 'protection', name: 'Protection', school: 'Protection', role: 'Tank' },
+    { id: 'retribution', name: 'Retribution', school: 'Retribution', role: 'Damage' },
+  ],
+  hunter: [
+    { id: 'beast-mastery', name: 'Beast Mastery', school: 'Beast Mastery', role: 'Damage' },
+    { id: 'marksmanship', name: 'Marksmanship', school: 'Marksmanship', role: 'Damage' },
+    { id: 'survival', name: 'Survival', school: 'Survival', role: 'Damage' },
+  ],
+  rogue: [
+    { id: 'assassination', name: 'Assassination', school: 'Assassination', role: 'Damage' },
+    { id: 'combat', name: 'Combat', school: 'Combat', role: 'Damage' },
+    { id: 'subtlety', name: 'Subtlety', school: 'Subtlety', role: 'Damage' },
+  ],
+  priest: [
+    { id: 'discipline', name: 'Discipline', school: 'Discipline', role: 'Healer' },
+    { id: 'holy', name: 'Holy', school: 'Holy', role: 'Healer' },
+    { id: 'shadow', name: 'Shadow', school: 'Shadow Magic', role: 'Damage' },
+  ],
+  shaman: [
+    { id: 'elemental', name: 'Elemental', school: 'Elemental Combat', role: 'Damage' },
+    { id: 'enhancement', name: 'Enhancement', school: 'Enhancement', role: 'Damage' },
+    { id: 'restoration', name: 'Restoration', school: 'Restoration', role: 'Healer' },
+  ],
+  mage: [
+    { id: 'arcane', name: 'Arcane', school: 'Arcane', role: 'Damage' },
+    { id: 'fire', name: 'Fire', school: 'Fire', role: 'Damage' },
+    { id: 'frost', name: 'Frost', school: 'Frost', role: 'Damage' },
+  ],
+  warlock: [
+    { id: 'affliction', name: 'Affliction', school: 'Affliction', role: 'Damage' },
+    { id: 'demonology', name: 'Demonology', school: 'Demonology', role: 'Damage' },
+    { id: 'destruction', name: 'Destruction', school: 'Destruction', role: 'Damage' },
+  ],
+  druid: [
+    { id: 'balance', name: 'Balance', school: 'Balance', role: 'Damage' },
+    { id: 'feral', name: 'Feral Combat', school: 'Feral Combat', role: 'Tank / Damage' },
+    { id: 'restoration', name: 'Restoration', school: 'Restoration', role: 'Healer' },
+  ],
+};
+
+// Client race IDs (ChrRaces) -> site race id, starting zone (Wowhead zone id).
+// Skyborne start on Zephras Isle and leave by airship to Dalaran (Alliance) or
+// Mulgore (Horde) — warcraft.wiki.gg/wiki/Zephras_Isle.
+export const RACES = [
+  { clientId: 1, id: 'human', startZone: 12 },
+  { clientId: 3, id: 'dwarf', startZone: 1 },
+  { clientId: 7, id: 'gnome', startZone: 1 },
+  { clientId: 4, id: 'nightelf', startZone: 141 },
+  { clientId: 95, id: 'highorder-skyborne', startZone: 16593, display: 'High Order Skyborne' },
+  { clientId: 2, id: 'orc', startZone: 14 },
+  { clientId: 8, id: 'troll', startZone: 14 },
+  { clientId: 6, id: 'tauren', startZone: 215 },
+  { clientId: 5, id: 'undead', startZone: 85 },
+  { clientId: 96, id: 'windshaper-skyborne', startZone: 16593, display: 'Windshaper Skyborne' },
+];
+
+// Zone facts the Wowhead quest data can't supply yet (keyed by Wowhead zone id).
+//   races: only these races can reach the zone
+//   range: used when too few of the zone's quests are catalogued to derive one
+export const ZONE_OVERRIDES = {
+  16593: {
+    races: ['highorder-skyborne', 'windshaper-skyborne'],
+    note: 'Skyborne starting zone. The Skyborne packs unlock the race and Zephras Isle.',
+  },
+  16591: {
+    range: [36, 44],
+    note: 'New contested zone east of the Badlands, with the Krol\'dok Stronghold dungeon. Range is Wowhead\'s zone record; Blizzard has said "mid-30s to mid-40s".',
+  },
+  616: {
+    range: [60, 60],
+    note: 'Level 60 zone with the Barrow Deeps and Hyjal Summit raids.',
+  },
+  16651: {
+    note: 'New zone between Mulgore, Desolace and Feralas (Highborne ruins, Gelkis vs. Magram centaur). Blizzard hasn\'t published a range; this one comes from the few quests catalogued so far.',
+  },
+};
+
+// Dungeon level ranges as Blizzard announced them (Kaivax, Blizzard forums,
+// Sept 2026; tabulated on warcraft.wiki.gg/wiki/World_of_Warcraft:_Forever).
+// `client` is the wowforevertalents.com instance slug, which carries the
+// client's own entry level, group size and bosses. `bosses` narrows a
+// multi-wing instance to the wing's bosses.
+export const DUNGEONS = [
+  { id: 'hall-of-thanes', name: 'The Hall of Thanes', zone: 'Ironforge', min: 13, max: 18, client: 'the-hall-of-thanes', isNew: true },
+  { id: 'ragefire-chasm', name: 'Ragefire Chasm', zone: 'Orgrimmar', min: 13, max: 19, client: 'ragefire-chasm', faction: 'Horde' },
+  { id: 'ruins-of-lordaeron', name: 'Ruins of Lordaeron', zone: 'Undercity', min: 15, max: 22, client: 'ruins-of-lordaeron', isNew: true },
+  { id: 'deadmines', name: 'The Deadmines', zone: 'Westfall', min: 18, max: 24, client: 'deadmines' },
+  { id: 'wailing-caverns', name: 'Wailing Caverns', zone: 'The Barrens', min: 19, max: 25, client: 'wailing-caverns' },
+  { id: 'shadowfang-keep', name: 'Shadowfang Keep', zone: 'Silverpine Forest', min: 23, max: 29, client: 'shadowfang-keep' },
+  { id: 'excavation-site-wetlands', name: 'Excavation Site: Wetlands', zone: 'Wetlands', min: 24, max: 29, client: 'excavation-site-wetlands', isNew: true },
+  { id: 'blackfathom-deeps', name: 'Blackfathom Deeps', zone: 'Ashenvale', min: 25, max: 31, client: 'blackfathom-deeps' },
+  { id: 'stormwind-stockade', name: 'The Stockade', zone: 'Stormwind City', min: 26, max: 32, client: 'stormwind-stockade', faction: 'Alliance' },
+  { id: 'city-of-dalaran', name: 'City of Dalaran', zone: 'Alterac Mountains', min: 28, max: 33, client: 'city-of-dalaran', isNew: true },
+  { id: 'razorfen-kraul', name: 'Razorfen Kraul', zone: 'The Barrens', min: 30, max: 36, client: 'razorfen-kraul' },
+  { id: 'gnomeregan', name: 'Gnomeregan', zone: 'Dun Morogh', min: 31, max: 37, client: 'gnomeregan' },
+  { id: 'sm-graveyard', name: 'Scarlet Monastery: Graveyard', zone: 'Tirisfal Glades', min: 31, max: 37, client: 'scarlet-monastery', bosses: ['Interrogator Vishas', 'Bloodmage Thalnos'] },
+  { id: 'sm-library', name: 'Scarlet Monastery: Library', zone: 'Tirisfal Glades', min: 34, max: 40, client: 'scarlet-monastery', bosses: ['Houndmaster Loksey', 'Arcanist Doan'] },
+  { id: 'drowned-city', name: 'The Drowned City', zone: 'Stranglethorn Vale', min: 35, max: 40, client: 'the-drowned-city', isNew: true },
+  { id: 'sm-armory', name: 'Scarlet Monastery: Armory', zone: 'Tirisfal Glades', min: 37, max: 43, client: 'scarlet-monastery', bosses: ['Herod'] },
+  { id: 'razorfen-downs', name: 'Razorfen Downs', zone: 'The Barrens', min: 38, max: 44, client: 'razorfen-downs' },
+  { id: 'sm-cathedral', name: 'Scarlet Monastery: Cathedral', zone: 'Tirisfal Glades', min: 39, max: 45, client: 'scarlet-monastery', bosses: ['High Inquisitor Fairbanks', 'High Inquisitor Whitemane'] },
+  { id: 'kroldok-stronghold', name: "Krol'dok Stronghold", zone: 'Riverglades', min: 40, max: 45, client: 'krol-dor-stronghold', isNew: true },
+  { id: 'uldaman', name: 'Uldaman', zone: 'Badlands', min: 44, max: 50, client: 'uldaman' },
+  { id: 'zulfarrak', name: "Zul'Farrak", zone: 'Tanaris', min: 45, max: 51, client: 'zul-farrak' },
+  { id: 'alcaz-prison', name: 'Alcaz Prison', zone: 'Dustwallow Marsh', min: 48, max: 53, client: 'defias-prison', isNew: true },
+  { id: 'maraudon', name: 'Maraudon', zone: 'Desolace', min: 48, max: 54, client: 'maraudon' },
+  { id: 'sunken-temple', name: "Temple of Atal'Hakkar", zone: 'Swamp of Sorrows', min: 52, max: 58, client: 'sunken-temple' },
+  { id: 'blackrock-depths', name: 'Blackrock Depths', zone: 'Blackrock Mountain', min: 52, max: 60, client: 'blackrock-depths' },
+  { id: 'dm-east', name: 'Dire Maul: Warpwood Quarter', zone: 'Feralas', min: 55, max: 60, client: 'dire-maul', bosses: ['Zevrim Thornhoof', 'Hydrospawn', 'Lethtendris', 'Pusillin', 'Alzzin the Wildshaper'] },
+  { id: 'blackmaw-hold', name: 'Blackmaw Hold', zone: 'Azshara', min: 55, max: 60, client: 'blackmaw-hold', isNew: true },
+  { id: 'lbrs', name: 'Lower Blackrock Spire', zone: 'Blackrock Mountain', min: 55, max: 60, client: 'blackrock-spire', bosses: ['Highlord Omokk', "Shadow Hunter Vosh'gajin", 'War Master Voone', 'Mother Smolderweb', 'Urok Doomhowl', 'Quartermaster Zigris', 'Halycon', 'Gizrul the Slavener', 'Overlord Wyrmthalak'] },
+  { id: 'dm-west', name: 'Dire Maul: Capital Gardens', zone: 'Feralas', min: 58, max: 60, client: 'dire-maul', bosses: ['Tendris Warpwood', 'Illyanna Ravenoak', 'Magister Kalendris', "Immol'thar", 'Prince Tortheldrin'] },
+  { id: 'scholomance', name: 'Scholomance', zone: 'Western Plaguelands', min: 58, max: 60, client: 'scholomance' },
+  { id: 'shapers-terrace', name: "Shaper's Terrace", zone: "Un'Goro Crater", min: 58, max: 60, client: 'shaper-s-terrace', isNew: true },
+  { id: 'stratholme', name: 'Stratholme', zone: 'Eastern Plaguelands', min: 58, max: 60, client: 'stratholme' },
+  { id: 'dm-north', name: 'Dire Maul: Gordok Commons', zone: 'Feralas', min: 58, max: 60, client: 'dire-maul', bosses: ["Guard Mol'dar", 'Stomper Kreeg', 'Guard Fengus', "Guard Slip'kik", 'Captain Kromcrush', 'King Gordok', "Cho'Rush the Observer"] },
+];
+
+// Launch raids (warcraft.wiki.gg/wiki/World_of_Warcraft:_Forever). Open 9 Dec 2026.
+export const RAIDS = [
+  { id: 'barrow-deeps', name: 'Barrow Deeps', zone: 'Mount Hyjal', size: 10, isNew: true },
+  { id: 'hyjal-summit', name: 'Hyjal Summit', zone: 'Mount Hyjal', size: 20, isNew: true },
+  { id: 'onyxias-lair', name: "Onyxia's Lair", zone: 'Dustwallow Marsh', size: 40 },
+];
+
+// Battleground queue level bands, from the Forever client's queue list
+// (wowforevertalents.com/dungeons/).
+export const BATTLEGROUNDS = [
+  { id: 'warsong-gulch', name: 'Warsong Gulch', min: 10, size: '10v10' },
+  { id: 'arathi-basin', name: 'Arathi Basin', min: 20, size: '15v15' },
+  { id: 'darkspear-islands', name: 'Darkspear Islands', min: 30, size: '15v15', isNew: true },
+  { id: 'alterac-valley', name: 'Alterac Valley', min: 51, size: '40v40' },
+];
+
+// Profession ranks. Max skills are the client's own; the character level each
+// rank needs is set by the server. Journeyman at 10 has been reported from the
+// beta; Expert and Artisan are the Classic values until Forever confirms them.
+export const PROFESSION_RANKS = [
+  { name: 'Apprentice', maxSkill: 75, minSkill: 0, level: 5, confirmed: false },
+  { name: 'Journeyman', maxSkill: 150, minSkill: 50, level: 10, confirmed: true },
+  { name: 'Expert', maxSkill: 225, minSkill: 125, level: 20, confirmed: false },
+  { name: 'Artisan', maxSkill: 300, minSkill: 200, level: 35, confirmed: false },
+];
+
+// Level milestones that aren't class spells. `classes` limits one to some classes.
+export const MILESTONES = [
+  { level: 5, title: 'Camping', text: 'Camping unlocks around level 5 through quests such as "The Great Outdoors". Build a campfire and let other players add tradeskill buffs to it.', source: 'warcraft.wiki.gg (Forever)', confirmed: true },
+  { level: 10, title: 'Talent points', text: 'You get your first talent point at 10 and one more every level, 51 in total at 60.', source: 'Forever client talent trees (51 points)', confirmed: true },
+  { level: 14, title: 'Cozy Sleeping Bag hunt', text: 'A scavenger hunt in Westfall or the Barrens rewards the Cozy Sleeping Bag, which gives a stacking XP buff and lets you earn rested XP while logged out.', source: 'warcraft.wiki.gg (Forever)', confirmed: true },
+  { level: 25, title: 'Legacy challenge', text: 'Reaching 25 completes a Legacy challenge. Legacy Points are earned account-wide and spent per character in the Legacy Trees.', source: 'warcraft.wiki.gg (Forever)', confirmed: true },
+  { level: 40, title: 'Dual talent specialization', text: 'Buy Dual Spec from your class trainer for 10 gold, then swap between two specs freely outside combat.', source: 'Blizzard (warcraft.wiki.gg)', confirmed: true },
+  { level: 40, title: 'Legacy challenge', text: 'Reaching 40 completes another Legacy challenge.', source: 'warcraft.wiki.gg (Forever)', confirmed: true },
+  { level: 40, title: 'Riding', text: 'Apprentice Riding is in the Forever client. Classic teaches it at 40; Forever hasn\'t confirmed its level yet.', source: 'Classic value', confirmed: false },
+  { level: 60, title: 'Level cap', text: 'Forever stays at 60 for good. Launch raids (Barrow Deeps, Hyjal Summit, Onyxia\'s Lair) open on 9 December 2026.', source: 'Blizzard (warcraft.wiki.gg)', confirmed: true },
+  { level: 60, title: 'Legacy challenge', text: 'Reaching 60 completes the last leveling Legacy challenge.', source: 'warcraft.wiki.gg (Forever)', confirmed: true },
+];

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.tsbuildinfo
+# Raw downloads used by `npm run data:fetch`; regenerated on demand
+data-raw/
+.DS_Store

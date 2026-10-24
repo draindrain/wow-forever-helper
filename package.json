@@ -4,12 +4,20 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Second-screen leveling cheat sheet for World of Warcraft: Forever",
+  "homepage": "https://draindrain.github.io/wow-forever-helper/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/draindrain/wow-forever-helper.git"
+  },
+  "bugs": "https://github.com/draindrain/wow-forever-helper/issues",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "data:fetch": "node scripts/fetch-sources.mjs",
     "data:build": "node scripts/build-data.mjs",
     "data": "npm run data:fetch && npm run data:build",

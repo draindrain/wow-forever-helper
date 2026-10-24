@@ -223,7 +223,7 @@ async function buildInstances() {
       entryLevel: entry ? Number(entry[1]) : undefined,
       players: Number(text(row.querySelector('.df-players'))) || undefined,
       changed: row.getAttribute('data-status') === 'changed',
-      bosses: detail.querySelectorAll('.idt-boss').map((b) => text(b)),
+      bosses: detail.querySelectorAll('.idt-boss').map((b) => text(b).replace(/[★◆]/g, '').trim()),
     });
   }
   const dungeons = DUNGEONS.map((d) => {

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { iconUrl } from '../data';
 import type { ChangeStatus } from '../types';
@@ -116,7 +116,19 @@ export function Empty({ children }: { children: ReactNode }) {
 }
 
 /** Small "1 ━━●━━ 60" track with a highlighted range and your level marked. */
-export function LevelTrack({ min, max, level, from = 1, to = 60 }: { min: number; max: number; level: number; from?: number; to?: number }) {
+export function LevelTrack({
+  min,
+  max,
+  level,
+  from = 1,
+  to = 60,
+}: {
+  min: number;
+  max: number;
+  level: number;
+  from?: number;
+  to?: number;
+}) {
   const pct = (v: number) => `${((Math.min(to, Math.max(from, v)) - from) / (to - from)) * 100}%`;
   return (
     <span className="level-track" aria-hidden="true">
@@ -124,4 +136,12 @@ export function LevelTrack({ min, max, level, from = 1, to = 60 }: { min: number
       <span className="level-track-you" style={{ left: pct(level) }} />
     </span>
   );
+}
+
+/**
+ * Share of a `.stack` column for a `.stack-item`, used only when the page fits the
+ * screen (see theme.css). `minHeight` keeps room for the panel's fixed parts.
+ */
+export function stackShare(grow: number, minHeight?: number): CSSProperties {
+  return { ['--grow' as string]: grow, ['--min' as string]: minHeight ? `${minHeight}px` : undefined };
 }

@@ -1,20 +1,26 @@
 # WoW Forever Helper
 
 A second-screen leveling cheat sheet for **World of Warcraft: Forever**. Create your character (race, class,
-spec and trade skills), bump the level each time you ding, and the page shows what matters at that level:
+spec and trade skills), bump the level each time you ding, and the page shows what matters at that level.
 
-- **New at this level**: trainer spells and ranks, with your spec's spells highlighted, plus talent points,
-  gear unlocks (plate, dual wield…), dungeon and battleground unlocks, and Forever milestones like dual spec at 40.
-- **Coming up**: everything unlocking over the next six levels, so you know when a trainer visit is worth it.
-- **Where to quest**: zones for your faction around your level, with how many quests sit at your level and which
-  herbs and veins you can gather there.
-- **Dungeons**: instances in range, coloured by difficulty, with entry level, group size and bosses.
-- **Trade skills**: track your skill, see when the next rank unlocks, the recipes that give skill-ups right now
-  and what unlocks soon. Mining and Herbalism list the nodes you can gather; Skinning shows the highest level you
-  can skin.
-- **Spellbook**: every spell you have at your level by school, with tooltips.
+It's built to sit on a second monitor while you play: on a 1080p screen everything fits without scrolling.
+Every list shows as many rows as fit and ends in "+N more" instead of running off the screen. Four tabs hold
+the details:
 
-Several characters can be saved; they live in your browser's local storage. The `+` and `-` keys change level.
+- **Overview** (the default) packs in as much as fits: what's new at your trainer this level, what unlocks
+  over the next levels, where to quest, dungeons in range, and your trade skills with their best skill-ups.
+- **Class skills**: new and upcoming trainer spells, your spellbook with one column per talent tree (your
+  spec's first), plus racials, talent milestones (dual spec at 40, spec talents) and gear unlocks.
+- **Quests & dungeons**: zones for your faction around your level with how many quests sit at your level, the
+  herbs and veins you can gather there, and the next zones coming up; dungeons in range with entry level and
+  bosses; later dungeons; battlegrounds and raids.
+- **Trade skills**: one column per profession. Track your skill, see when the next rank unlocks, the recipes
+  that give skill-ups now and what unlocks soon. Mining and Herbalism also list the nodes you can gather and
+  where; Skinning shows the highest level you can skin.
+
+Several characters can be saved; they live in your browser's local storage. Keyboard: `+` / `-` change
+level, `1`–`4` switch tabs. On windows smaller than about 1100×600 (phones, small laptops) the page falls back
+to a normal scrolling layout.
 
 ## Data
 
@@ -45,6 +51,7 @@ Requires Node 22.12+.
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # type-check and build to dist/
+npm run format     # Prettier for src/
 ```
 
 The app is Vite + React + TypeScript. Generated data lives in `src/data/generated/` and is committed, so

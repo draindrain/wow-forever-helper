@@ -32,9 +32,7 @@ export interface EventContext {
 
 /** Spells you can train: talent-gated ranks only count when the talent is in your spec's tree. */
 function trainable(ctx: EventContext): Spell[] {
-  return learnableSpells(ctx.classData, ctx.race, ctx.race.faction).filter(
-    (s) => talentState(s, ctx.spec) !== 'other',
-  );
+  return learnableSpells(ctx.classData, ctx.race, ctx.race.faction).filter((s) => talentState(s, ctx.spec) !== 'other');
 }
 
 export function eventsAt(ctx: EventContext, level: number): LevelEvent[] {

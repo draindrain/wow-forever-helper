@@ -1,10 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import '@fontsource/cinzel/600.css';
-import '@fontsource/cinzel/700.css';
-import '@fontsource/alegreya-sans/400.css';
-import '@fontsource/alegreya-sans/500.css';
-import '@fontsource/alegreya-sans/700.css';
+import '@fontsource/cinzel/latin-600.css';
+import '@fontsource/cinzel/latin-700.css';
+import '@fontsource/alegreya-sans/latin-400.css';
+import '@fontsource/alegreya-sans/latin-500.css';
+import '@fontsource/alegreya-sans/latin-700.css';
 import './styles/theme.css';
 import App from './App';
 

@@ -1152,3 +1152,14 @@ kbd {
   .switcher { flex: 1 1 calc(100% - 50px); }
   .switcher .select { flex: 1; max-width: none; }
 }
+
+/* The cookie notice from drnz.se/analytics.js renders in a shadow root; only its
+   colours can be set from here, so it arrives as a gold-trimmed panel. */
+#drnz-consent {
+  --consent-bg: var(--panel-top);
+  --consent-fg: var(--text);
+  --consent-edge: var(--trim);
+  --consent-accent: var(--gold);
+  --consent-radius: 3px;
+  --consent-font: var(--font-body);
+}

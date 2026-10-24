@@ -31,7 +31,9 @@ reputation and items) and, for chains, every step in order. Dungeons and raids l
 or attunement chain; on the Classic dungeons Forever keeps, the map shows a numbered pin for each boss.
 Hover a spell, talent, racial, recipe or reward item for its tooltip.
 
-Several characters can be saved; they live in your browser's local storage. Keyboard: `+` / `-` change
+Several characters can be saved; they live in your browser's local storage. Visits are counted with Google
+Analytics through the script all drnz.se sites share (`https://drnz.se/analytics.js`, from the `hub` repository),
+and only after the visitor accepts its cookie notice; [drnz.se/cookies](https://drnz.se/cookies/) has the details. Keyboard: `+` / `-` change
 level, `1`–`4` switch tabs. On windows smaller than about 1100×600 (phones, small laptops) the page falls back
 to a normal scrolling layout.
 

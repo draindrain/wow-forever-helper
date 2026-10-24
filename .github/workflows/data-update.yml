@@ -47,7 +47,7 @@ jobs:
 
       # data-raw/ holds the downloads; keeping it between runs means only new quest pages
       # and item tooltips are fetched each week.
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         with:
           path: data-raw
           key: data-raw-${{ github.run_id }}
@@ -61,7 +61,7 @@ jobs:
           # Pushes the branch and opens the pull request (needs the permissions above).
           GITHUB_TOKEN: ${{ github.token }}
 
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: always()
         with:
           path: data-raw

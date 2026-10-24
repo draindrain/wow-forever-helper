@@ -465,7 +465,8 @@ async function questBundle(rows, records, zoneId, extraIds = []) {
       level: q?.level ?? row.level,
       reqLevel: q?.reqLevel ?? row.reqlevel,
       side: q?.side ?? SIDES[row.side] ?? 'Both',
-      summary: q?.summary || undefined,
+      // Records fetched before the parser learned to drop description boilerplate.
+      summary: q?.summary && !/^A level/.test(q.summary) ? q.summary : undefined,
       type: q?.type,
       classes: siteIds(q?.classes, questIds.classes),
       races: siteIds(q?.races, questIds.races),

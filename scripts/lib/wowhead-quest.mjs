@@ -105,7 +105,8 @@ export function parseQuestPage(id, html) {
   const fact = (re) => facts.map((f) => re.exec(f)).find(Boolean);
   const description = doc.querySelector('meta[name="description"]')?.getAttribute('content') ?? '';
   // "Take X to Y. A level 5 Elwynn Forest Quest. +50 reputation ... Added in ..." -> the objective sentence(s).
-  const summary = decode(description.split(/\s+A level \d+|\s+A level-\?|\s+Added in /)[0]).trim();
+  // Some quests have no objective, so the description starts with the boilerplate.
+  const summary = decode(description.split(/(?:^|\s+)A level \d+|(?:^|\s+)A level-\?|(?:^|\s+)Added in /)[0]).trim();
 
   const series = [];
   for (const row of doc.querySelectorAll('table.series tr')) {

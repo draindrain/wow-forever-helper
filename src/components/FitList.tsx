@@ -19,6 +19,7 @@ interface Props {
 export function FitList({ children, className = '', onMore, moreLabel }: Props) {
   const list = useRef<HTMLUListElement>(null);
   const observer = useRef<ResizeObserver | null>(null);
+  const observed = useRef(new Set<Element>());
   const [hidden, setHidden] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const expandedRef = useRef(expanded);
@@ -58,6 +59,7 @@ export function FitList({ children, className = '', onMore, moreLabel }: Props) 
     return () => {
       observer.current?.disconnect();
       observer.current = null;
+      observed.current.clear();
     };
   }, []);
 
@@ -66,9 +68,12 @@ export function FitList({ children, className = '', onMore, moreLabel }: Props) 
   useLayoutEffect(() => {
     const el = list.current;
     if (!el) return;
-    observer.current ??= new ResizeObserver(() => measure.current());
-    observer.current.observe(el);
-    for (const item of Array.from(el.children)) observer.current.observe(item);
+    const ro = (observer.current ??= new ResizeObserver(() => measure.current()));
+    // Watch the list and its current rows; stop watching rows that are gone.
+    const now = new Set<Element>([el, ...Array.from(el.children)]);
+    for (const node of observed.current) if (!now.has(node)) ro.unobserve(node);
+    for (const node of now) if (!observed.current.has(node)) ro.observe(node);
+    observed.current = now;
     measure.current();
     // Once more after the browser settles the layout (e.g. siblings that render in the same pass).
     const frame = requestAnimationFrame(() => measure.current());

@@ -1,7 +1,13 @@
 # WoW Forever Helper
 
+[![Deploy](https://github.com/draindrain/wow-forever-helper/actions/workflows/deploy.yml/badge.svg)](https://github.com/draindrain/wow-forever-helper/actions/workflows/deploy.yml)
+
+**Open it: [draindrain.github.io/wow-forever-helper](https://draindrain.github.io/wow-forever-helper/)**
+
 A second-screen leveling cheat sheet for **World of Warcraft: Forever**. Create your character (race, class,
 spec and trade skills), bump the level each time you ding, and the page shows what matters at that level.
+
+![The overview for a level 24 Orc Warrior: new spells, upcoming unlocks, dungeons, quest zones and trade skills](docs/screenshot.png)
 
 It's built to sit on a second monitor while you play: on a 1080p screen everything fits without scrolling.
 Every list shows as many rows as fit and ends in "+N more" instead of running off the screen. Four tabs hold
@@ -67,7 +73,7 @@ Requires Node 22.12+.
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # type-check and build to dist/
-npm run format     # Prettier for src/
+npm run format     # Prettier for src/ (CI runs format:check)
 ```
 
 The app is Vite + React + TypeScript. Generated data lives in `src/data/generated/` and is committed, so
@@ -142,7 +148,8 @@ re-fetched weekly; run `npm run data:fetch -- --only=quests --force` now and the
 ## Deployment
 
 `.github/workflows/deploy.yml` builds the site and deploys it to GitHub Pages on every push to `main`
-(pull requests only build). One-time setup: in the repository's **Settings → Pages**, set **Source** to
+(pull requests only build). The build sets the canonical URL, social preview tags and `sitemap.xml` from the
+Pages address, so a custom domain picks them up on its own. One-time setup: in the repository's **Settings → Pages**, set **Source** to
 **GitHub Actions**.
 
 ---

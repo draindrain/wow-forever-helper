@@ -54,15 +54,6 @@ export function ZoneModal({
       <div className="modal-split">
         <aside className="modal-side">
           <QuestMap zoneId={zoneId} quests={shown} level={level} hovered={hovered} onHover={setHovered} />
-          <div className="map-legend small">
-            <span>
-              <span className="pin pin-start pin-yellow">!</span> Pick up
-            </span>
-            <span>
-              <span className="pin pin-end pin-yellow">?</span> Turn in
-            </span>
-            <span className="muted">Colour shows the quest's difficulty for you. Hover a quest to find it.</span>
-          </div>
           {zone?.note && <p className="small muted">{zone.note}</p>}
           {zone && zone.nodes.length > 0 && (
             <div className="node-row small">

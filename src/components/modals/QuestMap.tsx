@@ -46,42 +46,53 @@ export function QuestMap({
   if (failed) return null;
   const pins = pinsFor(quests, zoneId);
   return (
-    <div className="quest-map">
-      <img src={mapUrl(zoneId)} alt="" onError={() => setFailed(true)} />
-      {pins.map((pin) => {
-        // The pin takes the colour of its most worthwhile quest, as the game's "!" does.
-        const colors = pin.quests.map((q) => levelColor(q.level, level));
-        const color = order.find((c) => colors.includes(c)) ?? 'grey';
-        const hot = pin.quests.some((q) => q.id === hovered);
-        return (
-          <span
-            key={pin.key}
-            className={`pin-wrap ${hot ? 'is-hot' : ''}`}
-            style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
-            onMouseEnter={() => onHover?.(pin.quests[0]?.id)}
-            onMouseLeave={() => onHover?.(undefined)}
-          >
-            <Tooltip
-              content={
-                <>
-                  <div className="tt-name">{pin.name}</div>
-                  <div className="tt-line tt-muted">
-                    {pin.kind === 'start' ? 'Gives' : 'Takes'} {pin.quests.length} quest
-                    {pin.quests.length > 1 ? 's' : ''} · {pin.x.toFixed(1)}, {pin.y.toFixed(1)}
-                  </div>
-                  {pin.quests.map((q) => (
-                    <div key={q.id} className="tt-line">
-                      <span className={`d-${levelColor(q.level, level)}`}>[{q.level}]</span> {q.name}
-                    </div>
-                  ))}
-                </>
-              }
+    <>
+      <div className="quest-map">
+        <img src={mapUrl(zoneId)} alt="" onError={() => setFailed(true)} />
+        {pins.map((pin) => {
+          // The pin takes the colour of its most worthwhile quest, as the game's "!" does.
+          const colors = pin.quests.map((q) => levelColor(q.level, level));
+          const color = order.find((c) => colors.includes(c)) ?? 'grey';
+          const hot = pin.quests.some((q) => q.id === hovered);
+          return (
+            <span
+              key={pin.key}
+              className={`pin-wrap ${hot ? 'is-hot' : ''}`}
+              style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+              onMouseEnter={() => onHover?.(pin.quests[0]?.id)}
+              onMouseLeave={() => onHover?.(undefined)}
             >
-              <span className={`pin pin-${pin.kind} pin-${color}`}>{pin.kind === 'start' ? '!' : '?'}</span>
-            </Tooltip>
-          </span>
-        );
-      })}
-    </div>
+              <Tooltip
+                content={
+                  <>
+                    <div className="tt-name">{pin.name}</div>
+                    <div className="tt-line tt-muted">
+                      {pin.kind === 'start' ? 'Gives' : 'Takes'} {pin.quests.length} quest
+                      {pin.quests.length > 1 ? 's' : ''} · {pin.x.toFixed(1)}, {pin.y.toFixed(1)}
+                    </div>
+                    {pin.quests.map((q) => (
+                      <div key={q.id} className="tt-line">
+                        <span className={`d-${levelColor(q.level, level)}`}>[{q.level}]</span> {q.name}
+                      </div>
+                    ))}
+                  </>
+                }
+              >
+                <span className={`pin pin-${pin.kind} pin-${color}`}>{pin.kind === 'start' ? '!' : '?'}</span>
+              </Tooltip>
+            </span>
+          );
+        })}
+      </div>
+      <div className="map-legend small">
+        <span>
+          <span className="pin pin-start pin-yellow">!</span> Pick up
+        </span>
+        <span>
+          <span className="pin pin-end pin-yellow">?</span> Turn in
+        </span>
+        <span className="muted">Colour shows the quest's difficulty for you. Hover a quest to find it.</span>
+      </div>
+    </>
   );
 }

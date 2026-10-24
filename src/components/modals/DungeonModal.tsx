@@ -28,25 +28,28 @@ function AttunementCard({
         <span className="muted small">{attunement.quests.length} steps</span>
       </header>
       <ol className="chain-steps">
-        {attunement.quests.map((step, i) => (
-          <li key={i}>
-            {step.map((id) => {
-              const q = byId.get(id);
-              return q ? (
-                <QuestCard
-                  key={id}
-                  quest={q}
-                  bundle={bundle}
-                  level={level}
-                  hovered={hovered}
-                  onHover={onHover}
-                  here={here}
-                  stepLabel={`${i + 1}.`}
-                />
-              ) : null;
-            })}
-          </li>
-        ))}
+        {attunement.quests.map(
+          (step, i) =>
+            step.some((id) => byId.has(id)) && (
+              <li key={i}>
+                {step.map((id) => {
+                  const q = byId.get(id);
+                  return q ? (
+                    <QuestCard
+                      key={id}
+                      quest={q}
+                      bundle={bundle}
+                      level={level}
+                      hovered={hovered}
+                      onHover={onHover}
+                      here={here}
+                      stepLabel={`${i + 1}.`}
+                    />
+                  ) : null;
+                })}
+              </li>
+            ),
+        )}
       </ol>
     </section>
   );

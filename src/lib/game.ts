@@ -36,19 +36,11 @@ export function levelColor(level: number, player: number): Difficulty {
 
 // ---------------------------------------------------------------- spells
 
-export interface CharacterContext {
-  race: Race;
-  faction: Faction;
-  spec: Spec;
-  level: number;
-}
-
 /** Spells this race and faction can learn at all. */
 export function learnableSpells(data: ClassData, race: Race, faction: Faction): Spell[] {
   return data.spells.filter(
     (s) =>
-      (!s.faction || s.faction === faction) &&
-      (s.races.length === 0 || s.races.some((r) => race.name.includes(r))),
+      (!s.faction || s.faction === faction) && (s.races.length === 0 || s.races.some((r) => race.name.includes(r))),
   );
 }
 
@@ -85,14 +77,13 @@ export interface SpellbookEntry {
   next?: SpellRank;
 }
 
+/** Every spell with the rank you have at `level` and the next one, including spells you can't learn yet. */
 export function spellbook(spells: Spell[], level: number): SpellbookEntry[] {
-  return spells
-    .map((spell) => ({
-      spell,
-      current: [...spell.ranks].reverse().find((r) => r.level <= level),
-      next: spell.ranks.find((r) => r.level > level),
-    }))
-    .filter((e) => e.current);
+  return spells.map((spell) => ({
+    spell,
+    current: [...spell.ranks].reverse().find((r) => r.level <= level),
+    next: spell.ranks.find((r) => r.level > level),
+  }));
 }
 
 /** Spec-tree talents with an active spell (e.g. Mortal Strike), by the level you can take them. */
@@ -104,7 +95,7 @@ export function specTalentSpells(spells: Spell[], spec: Spec): { spell: Spell; l
 
 // ---------------------------------------------------------------- zones
 
-export type ZoneFit = 'ideal' | 'early' | 'late' | 'other';
+export type ZoneFit = 'ideal' | 'early' | 'late' | 'other' | 'upcoming';
 
 export interface ZoneSuggestion {
   zone: Zone;
@@ -115,6 +106,7 @@ export interface ZoneSuggestion {
   goodQuests: number;
   /** Green quests: still XP, quick to do. */
   greenQuests: number;
+  totalQuests: number;
   estimated: boolean;
   isStart: boolean;
 }
@@ -151,14 +143,36 @@ export function suggestZones(zones: Zone[], race: Race, level: number): ZoneSugg
       fit,
       goodQuests,
       greenQuests,
+      totalQuests: range.quests,
       estimated: !!range.estimated,
       isStart: zone.id === race.startZone,
     });
   }
-  const fitOrder: Record<ZoneFit, number> = { ideal: 0, late: 1, early: 2, other: 3 };
-  return out.sort(
-    (a, b) => fitOrder[a.fit] - fitOrder[b.fit] || b.goodQuests - a.goodQuests || a.min - b.min,
-  );
+  const fitOrder: Record<ZoneFit, number> = { ideal: 0, late: 1, early: 2, other: 3, upcoming: 4 };
+  return out.sort((a, b) => fitOrder[a.fit] - fitOrder[b.fit] || b.goodQuests - a.goodQuests || a.min - b.min);
+}
+
+/** Zones you'll reach within `ahead` levels that aren't suggested yet, nearest first. */
+export function upcomingZones(zones: Zone[], race: Race, level: number, ahead = 10): ZoneSuggestion[] {
+  const suggested = new Set(suggestZones(zones, race, level).map((s) => s.zone.id));
+  const out: ZoneSuggestion[] = [];
+  for (const zone of zones) {
+    const range = zone.factions[race.faction];
+    if (!range || suggested.has(zone.id) || !zoneCanVisit(zone, race)) continue;
+    if (range.min <= level || range.min > level + ahead) continue;
+    out.push({
+      zone,
+      min: range.min,
+      max: range.max,
+      fit: 'upcoming',
+      goodQuests: 0,
+      greenQuests: 0,
+      totalQuests: range.quests,
+      estimated: !!range.estimated,
+      isStart: false,
+    });
+  }
+  return out.sort((a, b) => a.min - b.min || a.max - b.max);
 }
 
 // ---------------------------------------------------------------- dungeons
@@ -174,9 +188,7 @@ export function dungeonFit(d: Dungeon, level: number): DungeonFit {
 }
 
 export function dungeonsFor(dungeons: Dungeon[], faction: Faction, level: number): Dungeon[] {
-  return dungeons.filter(
-    (d) => (!d.faction || d.faction === faction) && level >= d.min - 3 && level <= d.max + 3,
-  );
+  return dungeons.filter((d) => (!d.faction || d.faction === faction) && level >= d.min - 3 && level <= d.max + 3);
 }
 
 // ---------------------------------------------------------------- professions
@@ -236,9 +248,7 @@ export function skillUpRecipes(recipes: Recipe[], skill: number): Recipe[] {
 }
 
 export function upcomingRecipes(recipes: Recipe[], skill: number): Recipe[] {
-  return recipes
-    .filter((r) => learnSkill(r).skill > skill)
-    .sort((a, b) => learnSkill(a).skill - learnSkill(b).skill);
+  return recipes.filter((r) => learnSkill(r).skill > skill).sort((a, b) => learnSkill(a).skill - learnSkill(b).skill);
 }
 
 /** Every herb or ore in the zone data, with the lowest skill any zone lists for it. */

@@ -198,8 +198,9 @@ export function DungeonModal({
             )}
           </div>
           <p className="source small muted">
-            Quests and rewards from Wowhead's Forever database. Attunements follow Classic; each one is kept only if its
-            quests are in Forever's data.
+            Quests and rewards from Wowhead's Forever database. Attunements follow Classic, kept only if their quests
+            are in Forever's data; a chain shows the steps Wowhead groups with its final quest, so a long one (Onyxia)
+            starts earlier than listed.
           </p>
         </section>
       </div>

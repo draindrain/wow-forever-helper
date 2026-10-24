@@ -26,3 +26,6 @@ export const CITY_ZONE_IDS = [1519, 1537, 1638, 1637, 1657, 1497, 16509];
 
 // Wowhead lists dev/test maps, seas and transport zones alongside real ones.
 export const ZONE_EXCLUDE = /test|unused|prototype|sea$|waters|tram|crafting|tavern/i;
+
+// Placeholder rows (<NYI>, <UNUSED>), Legacy reward pickups and similar aren't leveling quests.
+export const NOT_A_QUEST = /^<|^Legacy Reward/;

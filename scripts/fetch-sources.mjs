@@ -5,19 +5,23 @@
 //   - wowforevertalents.com: class spellbooks, racials, professions and dungeons,
 //     read by that site from the Forever client (build noted in its pages).
 //   - wago.tools: raw DB2 tables from the Forever client (product "wowf").
-//   - wowhead.com/forever: zone list plus each zone's quests and gathering nodes.
-//     Wowhead serves a JS challenge to plain HTTP clients, so these pages are
-//     rendered in a headless Chromium through playwright-core. Point CHROMIUM_PATH
-//     at a Chrome/Chromium binary if it isn't found automatically.
+//   - wowhead.com/forever: zone list plus each zone's quests and gathering nodes
+//     ("wowhead"), every quest's page ("quests", slow: ~3,000 pages, an hour or so)
+//     and item tooltips ("items", via Wowhead's tooltip API).
+//     Wowhead serves a JS challenge to plain HTTP clients, so pages are rendered in
+//     a headless Chromium through playwright-core. Point CHROMIUM_PATH at a
+//     Chrome/Chromium binary if it isn't found automatically.
 //
-// Usage: node scripts/fetch-sources.mjs [--only=wft,wago,wowhead] [--force]
+// Usage: node scripts/fetch-sources.mjs [--only=wft,wago,wowhead,quests,items] [--force]
 
-import { mkdir, writeFile, readFile, access } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, readdir, access } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WAGO_BUILD, CLASSES, PROFESSIONS, ZONE_EXCLUDE, CITY_ZONE_IDS } from './sources.mjs';
-import { extractJsonScript } from './lib/wowhead.mjs';
+import { WAGO_BUILD, CLASSES, PROFESSIONS, ZONE_EXCLUDE, CITY_ZONE_IDS, NOT_A_QUEST } from './sources.mjs';
+import { ATTUNEMENTS, INSTANCE_ZONES } from './curated.mjs';
+import { extractJsonScript, listviews } from './lib/wowhead.mjs';
+import { parseQuestPage } from './lib/wowhead-quest.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const rawDir = path.join(root, 'data-raw');
@@ -91,29 +95,59 @@ function findChromium() {
   return found;
 }
 
-async function fetchWowhead() {
+/**
+ * A headless browser for Wowhead. Pages pass an AWS WAF check before they render,
+ * so its scripts and styles load (a missing stylesheet sends it to an error page);
+ * ads, trackers, images and fonts are blocked.
+ */
+async function openWowhead() {
   const { chromium } = await import('playwright-core');
-  const browser = await chromium.launch({ executablePath: findChromium(), args: ['--no-sandbox'] });
-  const page = await browser.newPage({
-    userAgent:
-      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0 Safari/537.36',
+  const browser = await chromium.launch({
+    executablePath: findChromium(),
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
   });
-  // Images, fonts and media aren't needed for the embedded data.
-  await page.route('**/*', (route) =>
-    ['image', 'font', 'media'].includes(route.request().resourceType()) ? route.abort() : route.continue(),
-  );
+  const context = await browser.newContext({
+    userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0 Safari/537.36',
+  });
+  await context.route('**/*', (route) => {
+    const req = route.request();
+    const host = new URL(req.url()).hostname;
+    const allowed = /(^|\.)(wowhead\.com|zamimg\.com|awswaf\.com)$/.test(host);
+    if (!allowed || ['image', 'font', 'media'].includes(req.resourceType())) return route.abort();
+    return route.continue();
+  });
+  return { browser, context };
+}
+
+/** Loads `url` and waits until `ready` (run in the page) is true, riding out the WAF reload. */
+async function renderPage(page, url, ready, timeout = 45000) {
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  const until = Date.now() + timeout;
+  while (Date.now() < until) {
+    try {
+      if (await page.evaluate(ready)) return await page.content();
+    } catch {
+      // The challenge reloads the page mid-check; try again.
+    }
+    await sleep(250);
+  }
+  throw new Error(`${url}: timed out`);
+}
+
+async function fetchWowhead() {
+  const { browser, context } = await openWowhead();
+  const page = await context.newPage();
 
   async function render(url, file, ready) {
     if (!force && (await exists(file))) return false;
     for (let attempt = 1; ; attempt++) {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
       try {
-        await page.waitForFunction(ready, null, { timeout: 30000 });
+        const html = await renderPage(page, url, ready);
         await mkdir(path.dirname(file), { recursive: true });
-        await writeFile(file, await page.content());
+        await writeFile(file, html);
         return true;
       } catch (err) {
-        if (attempt >= 3) throw new Error(`${url}: ${err.message}`);
+        if (attempt >= 3) throw err;
         await sleep(5000 * attempt);
       }
     }
@@ -127,27 +161,156 @@ async function fetchWowhead() {
 
   const zones = JSON.parse(extractJsonScript(await readFile(listFile, 'utf8'), 'data.page.listPage.listviews'))[0]
     .data;
+  const instanceIds = new Set(Object.values(INSTANCE_ZONES).flat());
   const targets = zones.filter(
     (z) =>
-      z.instance === 0 &&
-      [0, 1, -1].includes(z.category) &&
-      !CITY_ZONE_IDS.includes(z.id) &&
-      !ZONE_EXCLUDE.test(z.name) &&
-      (z.minlevel > 0 || z.envChange?.status === 'new'),
+      instanceIds.has(z.id) ||
+      (z.instance === 0 &&
+        [0, 1, -1].includes(z.category) &&
+        !CITY_ZONE_IDS.includes(z.id) &&
+        !ZONE_EXCLUDE.test(z.name) &&
+        (z.minlevel > 0 || z.envChange?.status === 'new')),
   );
   for (const z of targets) {
     const fetched = await render(
       `https://www.wowhead.com/forever/zone=${z.id}`,
       path.join(rawDir, 'wowhead', `zone-${z.id}.html`),
-      () => document.documentElement.innerHTML.includes("template: 'quest'") || document.title.includes('Zone'),
+      () => document.readyState !== 'loading' && document.title.includes(' - Zone - '),
     );
     console.log(`${fetched ? 'rendered' : 'cached  '} wowhead zone ${z.id} ${z.name}`);
-    if (fetched) await sleep(1500);
+    if (fetched) await sleep(1000);
   }
   await browser.close();
+}
+
+/** Quest ids filed under each fetched zone or instance, plus the attunement chains' last quests. */
+async function questIds() {
+  const ids = new Set();
+  for (const file of await readdir(path.join(rawDir, 'wowhead'))) {
+    const m = /^zone-(\d+)\.html$/.exec(file);
+    if (!m) continue;
+    const zoneId = Number(m[1]);
+    for (const q of listviews(await readFile(path.join(rawDir, 'wowhead', file), 'utf8')).quests ?? []) {
+      if (q.category === zoneId && q.level > 0 && !NOT_A_QUEST.test(q.name)) ids.add(q.id);
+    }
+  }
+  for (const list of Object.values(ATTUNEMENTS)) for (const a of list) ids.add(a.quest);
+  return ids;
+}
+
+/**
+ * Each quest's page: givers, map coordinates, chain and rewards. Parsed on the spot
+ * and saved as data-raw/wowhead/quests/<id>.json (the pages themselves are large).
+ * Chains are followed into other zones a few steps deep. Resumable: quests already
+ * saved are skipped. QUEST_CONCURRENCY sets parallel pages (default 3).
+ */
+async function fetchQuests() {
+  const dir = path.join(rawDir, 'wowhead', 'quests');
+  await mkdir(dir, { recursive: true });
+  const ids = await questIds();
+  const workers = Number(process.env.QUEST_CONCURRENCY ?? 3);
+  let done = 0;
+
+  async function crawl(context, todo) {
+    const queue = [...todo];
+    let browserGone = false;
+    let timeouts = 0;
+    await Promise.all(
+      Array.from({ length: workers }, async () => {
+        const page = await context.newPage();
+        for (let id = queue.shift(); id !== undefined && !browserGone; id = queue.shift()) {
+          let record = null;
+          for (let attempt = 1; attempt <= 2 && !record && !browserGone; attempt++) {
+            try {
+              const html = await renderPage(
+                page,
+                `https://www.wowhead.com/forever/quest=${id}`,
+                // The quest's facts box, or Wowhead's redirect for a quest it doesn't have.
+                () =>
+                  document.readyState !== 'loading' &&
+                  (!!document.getElementById('infobox-contents-0') || location.search.includes('notFound=')),
+                30000,
+              );
+              record = parseQuestPage(id, html) ?? { id, missing: true };
+              timeouts = 0;
+            } catch (err) {
+              // A crashed browser ends this pass, and so do repeated timeouts: the WAF has
+              // soured on this browser's session, and a fresh one gets through again.
+              if (/has been closed|Target closed/.test(err.message) || ++timeouts >= workers + 1) {
+                console.warn(`quests: restarting the browser (${err.message})`);
+                browserGone = true;
+              } else await sleep(3000 * attempt);
+            }
+          }
+          if (record) await writeFile(path.join(dir, `${id}.json`), JSON.stringify(record));
+          if (record && ++done % 50 === 0) console.log(`quests: ${done} fetched`);
+          await sleep(300);
+        }
+        await page.close().catch(() => {});
+      }),
+    );
+  }
+
+  // Each pass gets a fresh browser; stop when everything is in or a pass gets nothing.
+  for (let pass = 0, before = -1; pass < 60 && done !== before; pass++) {
+    before = done;
+    const todo = [];
+    for (const id of ids) if ((force && pass === 0) || !(await exists(path.join(dir, `${id}.json`)))) todo.push(id);
+    console.log(`quests pass ${pass + 1}: ${todo.length} to fetch of ${ids.size}`);
+    if (!todo.length) break;
+    const { browser, context } = await openWowhead();
+    try {
+      await crawl(context, todo);
+    } finally {
+      await browser.close().catch(() => {});
+    }
+    // Chains: pull in every quest named in a fetched quest's series.
+    for (const file of await readdir(dir)) {
+      const q = JSON.parse(await readFile(path.join(dir, file), 'utf8'));
+      for (const step of q.series ?? []) for (const s of step) ids.add(s.id);
+    }
+  }
+}
+
+/** Item tooltips (quest rewards, crafted items, reagents) from Wowhead's tooltip API. */
+async function fetchItems() {
+  const dir = path.join(rawDir, 'wowhead', 'items');
+  await mkdir(dir, { recursive: true });
+  const ids = new Set();
+  const questDir = path.join(rawDir, 'wowhead', 'quests');
+  for (const file of (await exists(questDir)) ? await readdir(questDir) : []) {
+    const q = JSON.parse(await readFile(path.join(questDir, file), 'utf8'));
+    for (const [id] of [...(q.rewards?.choices ?? []), ...(q.rewards?.items ?? [])]) ids.add(id);
+  }
+  for (const p of PROFESSIONS) {
+    const html = await readFile(path.join(rawDir, 'wft', `profession-${p.slug}.html`), 'utf8');
+    for (const m of html.matchAll(/wowhead\.com\/(?:forever|classic)\/item=(\d+)/g)) ids.add(Number(m[1]));
+  }
+  const todo = [];
+  for (const id of ids) if (force || !(await exists(path.join(dir, `${id}.json`)))) todo.push(id);
+  console.log(`items: ${todo.length} to fetch of ${ids.size}`);
+  let done = 0;
+  await Promise.all(
+    Array.from({ length: 6 }, async () => {
+      for (let id = todo.shift(); id !== undefined; id = todo.shift()) {
+        try {
+          const res = await fetch(`https://nether.wowhead.com/forever/tooltip/item/${id}?dataEnv=16&locale=0`);
+          // A 404 ({"error":"Entity not found"}) is an item Forever doesn't have; keep it so it isn't retried.
+          if (res.ok || res.status === 404) await writeFile(path.join(dir, `${id}.json`), await res.text());
+          else console.warn(`item ${id}: HTTP ${res.status}`);
+        } catch (err) {
+          console.warn(`item ${id}: ${err.message}`);
+        }
+        if (++done % 200 === 0) console.log(`items: ${done} fetched`);
+        await sleep(100);
+      }
+    }),
+  );
 }
 
 if (want('wft')) await fetchWft();
 if (want('wago')) await fetchWago();
 if (want('wowhead')) await fetchWowhead();
+if (want('quests')) await fetchQuests();
+if (want('items')) await fetchItems();
 console.log('done');

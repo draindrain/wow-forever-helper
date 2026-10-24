@@ -138,6 +138,58 @@ export const RAIDS = [
   { id: 'onyxias-lair', name: "Onyxia's Lair", zone: 'Dustwallow Marsh', size: 40 },
 ];
 
+// Wowhead (Forever) zone ids for each instance: their pages list the quests filed
+// under the instance, and their map images. Announced instances with no Wowhead
+// zone yet are left out. Multi-wing instances share one zone and its quests.
+export const INSTANCE_ZONES = {
+  'hall-of-thanes': [16919],
+  'ragefire-chasm': [2437],
+  'ruins-of-lordaeron': [16611],
+  deadmines: [1581],
+  'wailing-caverns': [718],
+  'shadowfang-keep': [209],
+  'excavation-site-wetlands': [16732],
+  'blackfathom-deeps': [719],
+  'stormwind-stockade': [717],
+  'city-of-dalaran': [16544, 16560],
+  'razorfen-kraul': [491],
+  gnomeregan: [721],
+  'sm-graveyard': [796],
+  'sm-library': [796],
+  'sm-armory': [796],
+  'sm-cathedral': [796],
+  'razorfen-downs': [722],
+  uldaman: [1337],
+  zulfarrak: [1176],
+  maraudon: [2100],
+  'sunken-temple': [1477, 1417],
+  'blackrock-depths': [1584, 17803],
+  'dm-east': [2557],
+  'dm-west': [2557],
+  'dm-north': [2557],
+  lbrs: [1583, 17804],
+  scholomance: [2057],
+  stratholme: [2017],
+  'onyxias-lair': [2159],
+};
+
+// Keys and attunements as Classic has them, by the quest that completes each chain;
+// the build pulls in the whole chain from that quest's series. The site checks each
+// quest exists in Wowhead's Forever database and drops any that don't.
+// optional: a shortcut, not needed to enter.
+export const ATTUNEMENTS = {
+  'onyxias-lair': [
+    { title: 'Drakefire Amulet', faction: 'Alliance', quest: 6502 },
+    { title: 'Blood of the Black Dragon Champion', faction: 'Horde', quest: 6602 },
+  ],
+  scholomance: [
+    { title: 'Skeleton Key', faction: 'Alliance', quest: 5505 },
+    { title: 'Skeleton Key', faction: 'Horde', quest: 5511 },
+  ],
+  'blackrock-depths': [{ title: 'Shadowforge Key', quest: 3802, optional: true }],
+  maraudon: [{ title: 'Scepter of Celebras', quest: 7046, optional: true }],
+};
+
 // Battleground queue level bands, from the Forever client's queue list
 // (wowforevertalents.com/dungeons/).
 export const BATTLEGROUNDS = [

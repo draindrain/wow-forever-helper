@@ -1,7 +1,7 @@
 import metaJson from './generated/meta.json';
 import zonesJson from './generated/zones.json';
 import instancesJson from './generated/instances.json';
-import type { ClassData, Instances, Meta, Recipe, Zone } from '../types';
+import type { ClassData, Instances, Meta, QuestBundle, Recipe, Zone } from '../types';
 
 export const meta = metaJson as Meta;
 export const zones = zonesJson as Zone[];
@@ -16,6 +16,25 @@ export async function loadClass(classId: string): Promise<ClassData> {
   if (!load) throw new Error(`Unknown class ${classId}`);
   return (await load()).default;
 }
+
+const questFiles = import.meta.glob<{ default: QuestBundle }>('./generated/quests/*.json');
+
+/** Quests for a zone (by Wowhead zone id) or null if this build has none. */
+export async function loadZoneQuests(zoneId: number): Promise<QuestBundle | null> {
+  const load = questFiles[`./generated/quests/zone-${zoneId}.json`];
+  return load ? (await load()).default : null;
+}
+
+/** Quests and attunements for a dungeon or raid (by its id in instances.json). */
+export async function loadDungeonQuests(dungeonId: string): Promise<QuestBundle | null> {
+  const load = questFiles[`./generated/quests/dungeon-${dungeonId}.json`];
+  return load ? (await load()).default : null;
+}
+
+export const zoneById = (id: number) => zones.find((z) => z.id === id);
+
+/** Forever map image for a Wowhead zone id (the coordinates in quest data are percentages of it). */
+export const mapUrl = (zoneId: number) => `https://wow.zamimg.com/images/wow/classicplus/maps/enus/zoom/${zoneId}.jpg`;
 
 export async function loadRecipes(professionId: string): Promise<Recipe[]> {
   const load = professionFiles[`./generated/professions/${professionId}.json`];

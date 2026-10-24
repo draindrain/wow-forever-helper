@@ -125,6 +125,8 @@ export interface Recipe {
   grey?: number;
   quality: number;
   reagents: { name: string; count: number }[];
+  /** The crafted item's tooltip. */
+  product?: ItemTip;
 }
 
 export interface FactionRange {
@@ -210,4 +212,88 @@ export interface Character {
   spec: string;
   level: number;
   professions: CharacterProfession[];
+}
+
+// ---- quests (src/data/generated/quests/*.json)
+
+/** One line of an item tooltip: text, optional right-hand text, Wowhead colour class (q, q0-q5) or money. */
+export interface TipLine {
+  t: string;
+  r?: string;
+  c?: string;
+  /** Copper, for "Sell Price:" lines. */
+  money?: number;
+}
+
+export interface ItemTip {
+  name: string;
+  quality: number;
+  icon?: string;
+  lines: TipLine[];
+}
+
+export interface QuestGiver {
+  name: string;
+  kind: 'npc' | 'object' | 'item';
+  /** Wowhead zone id and name of the giver's map, with x/y in percent of that map. */
+  zone?: number;
+  zoneName?: string;
+  coord?: [number, number];
+}
+
+export interface QuestRewards {
+  xp?: number;
+  /** Copper. */
+  money?: number;
+  /** [itemId, count]: pick one. */
+  choices: [number, number][];
+  /** [itemId, count]: always given. */
+  items: [number, number][];
+  /** [faction, amount] */
+  rep: [string, number][];
+}
+
+export interface Quest {
+  id: number;
+  name: string;
+  level: number;
+  reqLevel?: number;
+  side: Faction | 'Both';
+  /** The objective, e.g. "Bring 8 Gnoll Paws to Marshal Dughan." */
+  summary?: string;
+  type?: string;
+  /** Only these classes / races (ids as in meta.json) can take it. */
+  classes?: string[];
+  races?: string[];
+  start?: QuestGiver;
+  end?: QuestGiver;
+  chain?: { id: string; step: number; length: number };
+  rewards: QuestRewards;
+}
+
+export interface ChainStep {
+  id: number;
+  name: string;
+  level?: number;
+  side?: string;
+  /** Zone the step starts in. */
+  zone?: string;
+}
+
+export interface Attunement {
+  title: string;
+  faction?: Faction;
+  optional?: boolean;
+  /** Quest ids, step by step (a step can offer alternatives). */
+  quests: number[][];
+}
+
+export interface QuestBundle {
+  /** Wowhead zone id whose map image to show. */
+  mapZone?: number;
+  quests: Quest[];
+  /** Chain id (its first quest's id) -> steps. */
+  chains: Record<string, ChainStep[][]>;
+  items: Record<string, ItemTip>;
+  attunements?: Attunement[];
 }

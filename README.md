@@ -18,6 +18,12 @@ the details:
   that give skill-ups now and what unlocks soon. Mining and Herbalism also list the nodes you can gather and
   where; Skinning shows the highest level you can skin.
 
+Click any zone or dungeon for its quests. A zone opens with its map: every quest giver is pinned as a `!`
+(pick up) or `?` (turn in) coloured by difficulty for you, and hovering a quest lights up its pins. Each quest
+shows its level, objective, where to pick it up and hand it in (with coordinates), its rewards (XP, money,
+reputation and items) and, for chains, every step in order. Dungeons and raids list their quests plus any key
+or attunement chain. Hover a spell, talent, racial, recipe or reward item for its tooltip.
+
 Several characters can be saved; they live in your browser's local storage. Keyboard: `+` / `-` change
 level, `1`–`4` switch tabs. On windows smaller than about 1100×600 (phones, small laptops) the page falls back
 to a normal scrolling layout.
@@ -31,6 +37,7 @@ Everything is WoW Forever data from the beta client (build `1.60.1.70532`), not 
 | Class spells, ranks and levels; racials; recipes; dungeon entry levels and bosses | Read from the Forever client by [wowforevertalents.com](https://wowforevertalents.com/) |
 | Race/class combinations | Forever client tables via [wago.tools](https://wago.tools/) |
 | Zone quest levels and gathering nodes | [Wowhead's Forever database](https://www.wowhead.com/forever) |
+| Quests: givers, coordinates, chains and rewards; zone maps; item tooltips | [Wowhead's Forever database](https://www.wowhead.com/forever) (quest pages, map images and its tooltip API) |
 | Dungeon level ranges, launch raids, dual spec and other milestones | Blizzard announcements, via [warcraft.wiki.gg](https://warcraft.wiki.gg/wiki/World_of_Warcraft:_Forever) |
 
 Caveats:
@@ -39,6 +46,8 @@ Caveats:
   launch. The site flags this when you go past 30.
 - Zone ranges are the middle 80% of a zone's quest levels for your faction. Riverglades and Mount Hyjal have too
   few catalogued quests so far, so they use Wowhead's zone range and Blizzard's level 60.
+- Keys and attunements (Onyxia's Lair, Scholomance, Blackrock Depths, Maraudon) follow Classic and are listed
+  only when their quests exist in Forever's data.
 - Trainers keep their requirements on the server. Profession rank levels other than Journeyman (10), the
   Apprentice Riding level, and the skill for trainer-taught recipes are Classic values or estimates. The site
   marks them as unconfirmed.
@@ -64,7 +73,10 @@ When a new Forever build lands (or after launch):
 1. Bump `WAGO_BUILD` in `scripts/sources.mjs` if the client build changed.
 2. `npm run data:fetch -- --force` re-downloads everything into `data-raw/` (git-ignored). Wowhead pages are
    rendered in headless Chrome through `playwright-core`; set `CHROMIUM_PATH` if Chrome/Chromium isn't found.
-   Add `--only=wft,wago,wowhead` to fetch a subset. Without `--force`, files already downloaded are kept.
+   Add `--only=wft,wago,wowhead,quests,items` to fetch a subset. Without `--force`, files already downloaded
+   are kept. `quests` renders every quest page in the zone and dungeon lists (about 3,000; it takes an hour or
+   so and restarts its browser whenever Wowhead's bot check starts timing out), so run it after `wowhead`;
+   `items` then fetches tooltips for reward and crafted items.
 3. `npm run data:build` turns `data-raw/` into `src/data/generated/`. (`npm run data` runs both steps.)
 4. Facts that aren't in any machine-readable source (dungeon ranges, milestones, profession rank levels, zone
    notes) are in `scripts/curated.mjs`, each with its source. Update them as Blizzard confirms things.

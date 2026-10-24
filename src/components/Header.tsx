@@ -26,11 +26,13 @@ export function Header(props: Props) {
   const { active, race, cls, spec, tab, showTabs, onTab, onLevel } = props;
   const level = active?.level ?? 1;
 
-  // Shortcuts while focus isn't in a text field: + / - change level, 1-4 switch tabs.
+  // Shortcuts while focus isn't in a text field or a dialog: + / - change level, 1-4 switch tabs.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest('input, textarea, select, [contenteditable]') || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (target.closest('input, textarea, select, [contenteditable], dialog') || e.ctrlKey || e.metaKey || e.altKey)
+        return;
+      if (document.querySelector('dialog[open]')) return;
       if (!active || !showTabs) return;
       if (e.key === '+' || e.key === '=') onLevel(level + 1);
       else if (e.key === '-' || e.key === '_') onLevel(level - 1);

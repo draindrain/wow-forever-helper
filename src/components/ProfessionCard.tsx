@@ -14,6 +14,7 @@ import { professionIcon } from '../lib/icons';
 import { useAsync } from '../lib/useAsync';
 import type { CharacterProfession, Faction, GatherNode, Race, Recipe } from '../types';
 import { FitList } from './FitList';
+import { clickable, useModal } from './modals/ModalContext';
 import { RecipeRow } from './rows';
 import { Empty, Icon, Panel } from './ui';
 
@@ -250,6 +251,7 @@ function GatherSection({
   const nodes = allNodes(zones, kind);
   const can = nodes.filter((n) => n.skill <= skill);
   const next = nodes.filter((n) => n.skill > skill).slice(0, 3);
+  const { openZone } = useModal();
   const nearby = suggestZones(zones, race, level)
     .map((s) => ({ s, nodes: s.zone.nodes.filter((n) => n.kind === kind && n.skill <= skill) }))
     .filter((z) => z.nodes.length > 0);
@@ -271,7 +273,11 @@ function GatherSection({
       <FitList className="gather-zones">
         {nearby.length ? (
           nearby.map(({ s, nodes: zn }) => (
-            <li key={s.zone.id} className="gather-zone">
+            <li
+              key={s.zone.id}
+              className="gather-zone is-clickable"
+              {...clickable(() => openZone(s.zone.id), `${s.zone.name}: quests and map`)}
+            >
               <span className="gather-zone-name">
                 {s.zone.name} <span className="muted">{s.min === s.max ? s.min : `${s.min}–${s.max}`}</span>
               </span>

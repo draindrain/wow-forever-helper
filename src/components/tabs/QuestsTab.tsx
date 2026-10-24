@@ -2,6 +2,7 @@ import { instances, MAX_LEVEL, zones } from '../../data';
 import { dungeonsFor, suggestZones, upcomingZones } from '../../lib/game';
 import { FitList } from '../FitList';
 import { DungeonRow, ZoneRow } from '../rows';
+import { clickable, useModal } from '../modals/ModalContext';
 import { Panel, StatusMark } from '../ui';
 import type { TabProps } from './types';
 
@@ -13,6 +14,7 @@ export function QuestsTab({ character, race }: TabProps) {
   const dungeonList = dungeonsFor(forFaction, race.faction, level);
   const later = forFaction.filter((d) => d.min > level + 3).sort((a, b) => a.min - b.min);
   const battlegrounds = instances.battlegrounds;
+  const { openDungeon } = useModal();
 
   return (
     <div className="tab-grid tab-quests">
@@ -59,7 +61,11 @@ export function QuestsTab({ character, race }: TabProps) {
         <Panel title="Later dungeons" icon="inv_misc_map_01" className="grow-3">
           <FitList className="mini-list">
             {later.map((d) => (
-              <li key={d.id} className="mini-row">
+              <li
+                key={d.id}
+                className="mini-row is-clickable"
+                {...clickable(() => openDungeon(d.id), `${d.name}: quests and attunement`)}
+              >
                 <span>
                   {d.name}
                   {d.isNew && <StatusMark status="new" />}
@@ -90,7 +96,11 @@ export function QuestsTab({ character, race }: TabProps) {
               </li>
             ))}
             {instances.raids.map((r) => (
-              <li key={r.id} className={`mini-row ${level < MAX_LEVEL ? 'is-future' : ''}`}>
+              <li
+                key={r.id}
+                className={`mini-row is-clickable ${level < MAX_LEVEL ? 'is-future' : ''}`}
+                {...clickable(() => openDungeon(r.id), `${r.name}: quests and attunement`)}
+              >
                 <span>
                   {r.name}
                   {r.isNew && <StatusMark status="new" />}

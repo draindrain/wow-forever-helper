@@ -1,7 +1,7 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { iconUrl } from '../data';
-import type { ChangeStatus } from '../types';
+import type { ChangeStatus, ItemTip } from '../types';
 
 export function Panel({
   title,
@@ -43,44 +43,142 @@ export function Icon({ icon, size = 32, className = '' }: { icon: string; size?:
   );
 }
 
-/** WoW-style tooltip shown on hover or keyboard focus, rendered on <body> so panels can't clip it. */
-export function Tooltip({ content, children }: { content: ReactNode; children: ReactNode }) {
-  const anchor = useRef<HTMLSpanElement>(null);
+/**
+ * WoW-style tooltip shown on hover or keyboard focus, rendered outside the panel so
+ * nothing clips it (inside an open <dialog> when the anchor is in one, since a modal
+ * dialog sits above everything on <body>). `block` makes a whole row (rendered as `as`)
+ * the hover target, with the tooltip following the mouse like the game's.
+ */
+export function Tooltip({
+  content,
+  children,
+  block,
+  as,
+  className = '',
+}: {
+  content: ReactNode;
+  children: ReactNode;
+  block?: boolean;
+  as?: 'li' | 'div';
+  className?: string;
+}) {
+  const anchor = useRef<HTMLElement>(null);
   const tip = useRef<HTMLDivElement>(null);
+  const mouse = useRef<{ x: number; y: number } | null>(null);
   const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState({ left: 0, top: 0 });
 
-  useLayoutEffect(() => {
-    if (!open || !anchor.current || !tip.current) return;
+  // Positions the tooltip straight on the element, so following the mouse doesn't re-render.
+  const place = useCallback(() => {
+    if (!anchor.current || !tip.current) return;
     const a = anchor.current.getBoundingClientRect();
     const t = tip.current.getBoundingClientRect();
     const margin = 8;
-    let left = a.left + a.width / 2 - t.width / 2;
+    const offset = 18;
+    let left: number;
+    let top: number;
+    if (block && mouse.current) {
+      const { x, y } = mouse.current;
+      left = x + offset + t.width <= window.innerWidth - margin ? x + offset : x - t.width - offset;
+      top = y + offset + t.height <= window.innerHeight - margin ? y + offset : y - t.height - offset / 2;
+    } else if (block) {
+      left = a.right + margin + t.width <= window.innerWidth ? a.right + margin : a.left - t.width - margin;
+      top = a.top;
+    } else {
+      left = a.left + a.width / 2 - t.width / 2;
+      top = a.bottom + margin;
+      if (top + t.height > window.innerHeight - margin) top = a.top - t.height - margin;
+    }
     left = Math.max(margin, Math.min(left, window.innerWidth - t.width - margin));
-    let top = a.bottom + margin;
-    if (top + t.height > window.innerHeight - margin) top = Math.max(margin, a.top - t.height - margin);
-    setPos({ left, top });
-  }, [open]);
+    top = Math.max(margin, Math.min(top, window.innerHeight - t.height - margin));
+    tip.current.style.left = `${left}px`;
+    tip.current.style.top = `${top}px`;
+  }, [block]);
 
+  useLayoutEffect(() => {
+    if (open) place();
+  }, [open, place]);
+
+  const Tag = block ? (as ?? 'div') : 'span';
   return (
-    <span
-      ref={anchor}
-      className="tip-anchor"
+    <Tag
+      ref={anchor as never}
+      className={`${block ? 'tip-block' : 'tip-anchor'} ${className}`}
       tabIndex={0}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={(e: React.MouseEvent) => {
+        mouse.current = { x: e.clientX, y: e.clientY };
+        setOpen(true);
+      }}
+      onMouseMove={
+        block
+          ? (e: React.MouseEvent) => {
+              mouse.current = { x: e.clientX, y: e.clientY };
+              place();
+            }
+          : undefined
+      }
+      onMouseLeave={() => {
+        mouse.current = null;
+        setOpen(false);
+      }}
       onFocus={() => setOpen(true)}
       onBlur={() => setOpen(false)}
     >
       {children}
       {open &&
         createPortal(
-          <div ref={tip} className="wow-tooltip" role="tooltip" style={{ left: pos.left, top: pos.top }}>
+          <div ref={tip} className="wow-tooltip" role="tooltip">
             {content}
           </div>,
-          document.body,
+          anchor.current?.closest('dialog[open]') ?? document.body,
         )}
+    </Tag>
+  );
+}
+
+/** Gold, silver and copper, as the game shows money. */
+export function Money({ copper }: { copper: number }) {
+  const g = Math.floor(copper / 10000);
+  const s = Math.floor((copper % 10000) / 100);
+  const c = copper % 100;
+  return (
+    <span className="money">
+      {g > 0 && <span className="coin coin-gold">{g}</span>}
+      {s > 0 && <span className="coin coin-silver">{s}</span>}
+      {(c > 0 || copper === 0) && <span className="coin coin-copper">{c}</span>}
     </span>
+  );
+}
+
+/** The game's item tooltip: name in its quality colour, then the item's lines. */
+export function ItemTipView({ item }: { item: ItemTip }) {
+  return (
+    <>
+      <div className={`tt-name q${item.quality}`}>{item.name}</div>
+      {item.lines.map((l, i) =>
+        l.money !== undefined ? (
+          <div key={i} className="tt-line tt-muted">
+            {l.t} <Money copper={l.money} />
+          </div>
+        ) : (
+          <div key={i} className={`tt-line ${l.c ? `tt-${l.c}` : ''} ${l.r ? 'tt-lr' : ''}`}>
+            <span>{l.t}</span>
+            {l.r && <span>{l.r}</span>}
+          </div>
+        ),
+      )}
+    </>
+  );
+}
+
+/** An item icon with its tooltip, a quality-coloured border and an optional stack count. */
+export function ItemIcon({ item, count, size = 30 }: { item: ItemTip; count?: number; size?: number }) {
+  return (
+    <Tooltip content={<ItemTipView item={item} />}>
+      <span className={`item-icon q-border-${item.quality}`}>
+        <Icon icon={item.icon ?? 'inv_misc_questionmark'} size={size} />
+        {count !== undefined && count > 1 && <span className="item-count">{count}</span>}
+      </span>
+    </Tooltip>
   );
 }
 

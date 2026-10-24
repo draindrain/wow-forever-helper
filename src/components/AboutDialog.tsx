@@ -30,22 +30,32 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
         </p>
         <h4>Shortcuts</h4>
         <p>
-          <kbd>+</kbd> / <kbd>−</kbd> change level · <kbd>1</kbd>–<kbd>4</kbd> switch tabs · hover an icon for its
-          tooltip.
+          <kbd>+</kbd> / <kbd>−</kbd> change level · <kbd>1</kbd>–<kbd>4</kbd> switch tabs · hover a spell, recipe or
+          item for its tooltip · click a zone or dungeon for its quests.
         </p>
         <h4>Where the data comes from</h4>
         <ul>
           <li>
-            Spells, ranks, racials, recipes and dungeon bosses: read from the Forever beta client (build{' '}
-            {meta.clientBuild}) by <a href="https://wowforevertalents.com/">wowforevertalents.com</a>.
+            Spells, ranks, racials and recipes: read from the Forever beta client (build {meta.clientBuild}) by{' '}
+            <a href="https://wowforevertalents.com/">wowforevertalents.com</a>.
           </li>
           <li>
-            Race and class combinations: client tables via <a href="https://wago.tools/">wago.tools</a>.
+            Race and class combinations and dungeon bosses: client tables via{' '}
+            <a href="https://wago.tools/">wago.tools</a>.
           </li>
           <li>
             Zone quest levels and gathering nodes:{' '}
             <a href="https://www.wowhead.com/forever">Wowhead's Forever database</a>. A zone's range is the middle 80%
             of its quest levels for your faction.
+          </li>
+          <li>
+            Quests (givers, coordinates, chains, rewards), zone maps and item tooltips: Wowhead's Forever database. Keys
+            and attunements follow Classic and show only when their quests are in Forever's data.
+          </li>
+          <li>
+            Boss pins on dungeon maps: Classic's spawn positions from the{' '}
+            <a href="https://github.com/cmangos/classic-db">CMaNGOS</a> database, on the Classic dungeons Forever keeps
+            unchanged.
           </li>
           <li>
             Dungeon level ranges, raids, dual spec and other milestones: Blizzard's announcements, via{' '}

@@ -26,3 +26,11 @@ export const CITY_ZONE_IDS = [1519, 1537, 1638, 1637, 1657, 1497, 16509];
 
 // Wowhead lists dev/test maps, seas and transport zones alongside real ones.
 export const ZONE_EXCLUDE = /test|unused|prototype|sea$|waters|tram|crafting|tavern/i;
+
+// Placeholder rows (<NYI>, <UNUSED>), Legacy reward pickups and similar aren't leveling quests.
+export const NOT_A_QUEST = /^<|^Legacy Reward/;
+
+// CMaNGOS classic-db world database, pinned to a commit: where Classic's creatures
+// spawn, used for boss positions in the dungeons Forever keeps unchanged.
+export const CMANGOS_DUMP =
+  'https://raw.githubusercontent.com/cmangos/classic-db/2f5b31bc32e80f121d78656817fbc5d6c3b1e99c/Full_DB/ClassicDB_1_12_1_z2815.sql.gz';

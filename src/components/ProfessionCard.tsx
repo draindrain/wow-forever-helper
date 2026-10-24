@@ -14,6 +14,7 @@ import { professionIcon } from '../lib/icons';
 import { useAsync } from '../lib/useAsync';
 import type { CharacterProfession, Faction, GatherNode, Race, Recipe } from '../types';
 import { FitList } from './FitList';
+import { clickable, useModal } from './modals/ModalContext';
 import { RecipeRow } from './rows';
 import { Empty, Icon, Panel } from './ui';
 
@@ -250,6 +251,7 @@ function GatherSection({
   const nodes = allNodes(zones, kind);
   const can = nodes.filter((n) => n.skill <= skill);
   const next = nodes.filter((n) => n.skill > skill).slice(0, 3);
+  const { openZone } = useModal();
   const nearby = suggestZones(zones, race, level)
     .map((s) => ({ s, nodes: s.zone.nodes.filter((n) => n.kind === kind && n.skill <= skill) }))
     .filter((z) => z.nodes.length > 0);
@@ -267,16 +269,21 @@ function GatherSection({
           <NodeChips nodes={next} skill={skill} />
         </div>
       )}
-      <h4>Where to gather at your level</h4>
+      <h4>Where to gather</h4>
       <FitList className="gather-zones">
         {nearby.length ? (
           nearby.map(({ s, nodes: zn }) => (
-            <li key={s.zone.id} className="gather-zone">
+            <li
+              key={s.zone.id}
+              className="gather-zone is-clickable"
+              {...clickable(() => openZone(s.zone.id), `${s.zone.name}: quests and map`)}
+            >
               <span className="gather-zone-name">
                 {s.zone.name} <span className="muted">{s.min === s.max ? s.min : `${s.min}–${s.max}`}</span>
               </span>
-              <span className="node-row small">
-                <NodeChips nodes={zn} skill={skill} />
+              {/* One line per zone, highest skill first; narrow columns clip the low ones. */}
+              <span className="node-row small single">
+                <NodeChips nodes={[...zn].reverse()} skill={skill} />
               </span>
             </li>
           ))
@@ -304,10 +311,12 @@ function RecipeSections({
   const soon = upcomingRecipes(recipes, skill).slice(0, compact ? 2 : 4);
   return (
     <>
-      <h4>
-        {gathering ? 'Recipes' : 'Skill-ups'} at {skill}
-      </h4>
-      {gathering && <p className="small muted">You raise this skill by {gathering}; these are a bonus.</p>}
+      {/* Gathering skills level from nodes and fish, so their recipes only show when there's something to make. */}
+      {(now.length > 0 || !gathering) && (
+        <h4 title={gathering && `You raise this skill by ${gathering}; recipes are a bonus.`}>
+          {gathering ? 'Recipes' : 'Skill-ups'} at {skill}
+        </h4>
+      )}
       {now.length ? (
         <FitList className="recipe-list">
           {now.map((r) => (
@@ -315,7 +324,7 @@ function RecipeSections({
           ))}
         </FitList>
       ) : (
-        <Empty>{gathering ? `Nothing to make at ${skill}.` : `No recipe gives skill at ${skill} yet.`}</Empty>
+        !gathering && <Empty>No recipe gives skill at {skill} yet.</Empty>
       )}
       {soon.length > 0 && (
         <div className="prof-soon">

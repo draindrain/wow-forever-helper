@@ -9,9 +9,10 @@ import {
   type ZoneSuggestion,
 } from '../lib/game';
 import { professionIcon } from '../lib/icons';
-import type { Character, Dungeon, Recipe, Spec, Spell, SpellRank } from '../types';
+import type { Character, Dungeon, Equipment, Recipe, Spec, Spell, SpellRank } from '../types';
+import { clickable, useModal } from './modals/ModalContext';
 import { SpellTip } from './SpellTip';
-import { Badge, Icon, LevelTrack, StatusMark, Tooltip } from './ui';
+import { Badge, Icon, ItemTipView, LevelTrack, StatusMark, Tooltip } from './ui';
 
 // ---------------------------------------------------------------- level events
 
@@ -22,10 +23,13 @@ export function EventRow({ event, ctx, compact }: { event: LevelEvent; ctx: Even
       const { spell, rank, isNewSpell } = event.entry;
       const inSpec = spell.school === ctx.spec.school;
       return (
-        <li className={`event ${inSpec ? 'is-spec' : ''}`}>
-          <Tooltip content={<SpellTip spell={spell} rank={rank} note={spell.note} />}>
-            <Icon icon={spell.icon} size={size} />
-          </Tooltip>
+        <Tooltip
+          as="li"
+          block
+          className={`event ${inSpec ? 'is-spec' : ''}`}
+          content={<SpellTip spell={spell} rank={rank} note={spell.note} />}
+        >
+          <Icon icon={spell.icon} size={size} />
           <div className="event-text">
             <span className="event-title">
               {spell.name}
@@ -45,23 +49,28 @@ export function EventRow({ event, ctx, compact }: { event: LevelEvent; ctx: Even
               </Badge>
             )}
           </span>
-        </li>
+        </Tooltip>
       );
     }
     case 'talent':
       return (
-        <li className="event is-spec">
+        <Tooltip
+          as="li"
+          block
+          className="event is-spec"
+          content={<SpellTip spell={event.spell} rank={event.spell.ranks[0]!} note={event.spell.note} />}
+        >
           <Icon icon={event.spell.icon} size={size} />
           <div className="event-text">
             <span className="event-title">{event.spell.name} talent</span>
             <span className="event-sub">Now available in your {ctx.spec.name} tree</span>
           </div>
           <Badge tone="purple">Talent</Badge>
-        </li>
+        </Tooltip>
       );
     case 'equipment':
       return (
-        <li className="event">
+        <Tooltip as="li" block className="event" content={<GearTip item={event.item} />}>
           <Icon icon={event.item.icon} size={size} />
           <div className="event-text">
             <span className="event-title">{event.item.name}</span>
@@ -70,24 +79,10 @@ export function EventRow({ event, ctx, compact }: { event: LevelEvent; ctx: Even
             </span>
           </div>
           <Badge tone="green">Gear</Badge>
-        </li>
+        </Tooltip>
       );
     case 'dungeon':
-      return (
-        <li className="event">
-          <Icon icon="inv_misc_map_01" size={size} />
-          <div className="event-text">
-            <span className="event-title">
-              {event.dungeon.name}
-              {event.dungeon.isNew && <StatusMark status="new" />}
-            </span>
-            <span className="event-sub">
-              Dungeon {event.dungeon.min}–{event.dungeon.max} · {event.dungeon.zone}
-            </span>
-          </div>
-          <Badge tone="blue">Dungeon</Badge>
-        </li>
-      );
+      return <DungeonEvent dungeon={event.dungeon} size={size} />;
     case 'battleground':
       return (
         <li className="event">
@@ -136,6 +131,49 @@ export function EventRow({ event, ctx, compact }: { event: LevelEvent; ctx: Even
   }
 }
 
+function DungeonEvent({ dungeon, size }: { dungeon: Dungeon; size: number }) {
+  const { openDungeon } = useModal();
+  return (
+    <li
+      className="event is-clickable"
+      {...clickable(() => openDungeon(dungeon.id), `${dungeon.name}: quests and attunement`)}
+    >
+      <Icon icon="inv_misc_map_01" size={size} />
+      <div className="event-text">
+        <span className="event-title">
+          {dungeon.name}
+          {dungeon.isNew && <StatusMark status="new" />}
+        </span>
+        <span className="event-sub">
+          Dungeon {dungeon.min}–{dungeon.max} · {dungeon.zone}
+        </span>
+      </div>
+      <Badge tone="blue">Dungeon</Badge>
+    </li>
+  );
+}
+
+const gearText: Record<string, string> = {
+  'Dual Wield': 'Lets you wield a one-handed weapon in your off hand.',
+  'Plate Mail': 'Lets you wear plate armor.',
+  Mail: 'Lets you wear mail armor.',
+  Polearms: 'Lets you use polearms. Train it at a weapon master.',
+};
+
+/** Tooltip for an armor or weapon proficiency. */
+export function GearTip({ item }: { item: Equipment }) {
+  return (
+    <>
+      <div className="tt-head">
+        <span className="tt-name">{item.name}</span>
+      </div>
+      <div className="tt-line tt-muted">Proficiency</div>
+      <div className="tt-desc">{gearText[item.name] ?? `Lets you use ${item.name.toLowerCase()}.`}</div>
+      <div className="tt-line tt-req">Requires level {item.level}</div>
+    </>
+  );
+}
+
 /** Spec spells first, then new spells, then upgrades, then everything else. */
 export function sortEvents(events: LevelEvent[], ctx: EventContext): LevelEvent[] {
   const weight = (e: LevelEvent) => {
@@ -170,8 +208,12 @@ export function ZoneRow({ s, character, compact }: { s: ZoneSuggestion; characte
     ore: character.professions.find((p) => p.id === 'mining'),
   };
   const nodes = s.zone.nodes.filter((n) => gathering[n.kind]);
+  const { openZone } = useModal();
   return (
-    <li className={`zone fit-${s.fit} ${compact ? 'is-compact' : ''}`}>
+    <li
+      className={`zone fit-${s.fit} ${compact ? 'is-compact' : ''} is-clickable`}
+      {...clickable(() => openZone(s.zone.id), `${s.zone.name}: quests and map`)}
+    >
       <div className="zone-head">
         <span className="zone-name">
           {s.zone.name}
@@ -248,8 +290,12 @@ const dungeonFitTone: Record<DungeonFit, string> = {
 
 export function DungeonRow({ d, level, compact }: { d: Dungeon; level: number; compact?: boolean }) {
   const fit = dungeonFit(d, level);
+  const { openDungeon } = useModal();
   return (
-    <li className={`dungeon fit-${fit} ${compact ? 'is-compact' : ''}`}>
+    <li
+      className={`dungeon fit-${fit} ${compact ? 'is-compact' : ''} is-clickable`}
+      {...clickable(() => openDungeon(d.id), `${d.name}: quests and attunement`)}
+    >
       <div className="zone-head">
         <span className="zone-name">
           {d.name}
@@ -296,10 +342,13 @@ export function SpellRow({
   const talent = talentState(spell, spec);
   const rank = current ?? spell.ranks[0]!;
   return (
-    <li className={`spell ${!current ? 'is-future' : ''} ${talent === 'other' ? 'is-dim' : ''}`}>
-      <Tooltip content={<SpellTip spell={spell} rank={rank} note={spell.note} />}>
-        <Icon icon={spell.icon} size={30} />
-      </Tooltip>
+    <Tooltip
+      as="li"
+      block
+      className={`spell ${!current ? 'is-future' : ''} ${talent === 'other' ? 'is-dim' : ''}`}
+      content={<SpellTip spell={spell} rank={rank} note={spell.note} />}
+    >
+      <Icon icon={spell.icon} size={30} />
       <div className="spell-text">
         <span className="spell-name">
           {spell.name}
@@ -321,7 +370,7 @@ export function SpellRow({
           {talent === 'spec' ? 'Talent' : spell.talent.tree}
         </Badge>
       )}
-    </li>
+    </Tooltip>
   );
 }
 
@@ -331,9 +380,16 @@ export function RecipeTip({ recipe, skill }: { recipe: Recipe; skill: number }) 
   const learn = learnSkill(recipe);
   return (
     <>
-      <div className="tt-head">
-        <span className={`tt-name q${recipe.quality}`}>{recipe.name}</span>
-      </div>
+      {recipe.product ? (
+        <>
+          <ItemTipView item={recipe.product} />
+          <div className="tt-sep" />
+        </>
+      ) : (
+        <div className="tt-head">
+          <span className={`tt-name q${recipe.quality}`}>{recipe.name}</span>
+        </div>
+      )}
       <div className="tt-line tt-muted">{recipe.heading}</div>
       {recipe.reagents.length > 0 && (
         <div className="tt-line">
@@ -368,10 +424,8 @@ export function RecipeRow({ recipe, skill, upcoming }: { recipe: Recipe; skill: 
   const color = recipeColor(recipe, skill);
   const learn = learnSkill(recipe);
   return (
-    <li className="recipe">
-      <Tooltip content={<RecipeTip recipe={recipe} skill={skill} />}>
-        <Icon icon={recipe.icon} size={24} />
-      </Tooltip>
+    <Tooltip as="li" block className="recipe" content={<RecipeTip recipe={recipe} skill={skill} />}>
+      <Icon icon={recipe.icon} size={24} />
       <div className="recipe-text">
         <span className={`recipe-name ${upcoming ? '' : `d-${color}`}`}>
           {recipe.name}
@@ -396,6 +450,6 @@ export function RecipeRow({ recipe, skill, upcoming }: { recipe: Recipe; skill: 
         )}
         {recipe.heading === 'Camping' && <Badge tone="green">Camping</Badge>}
       </span>
-    </li>
+    </Tooltip>
   );
 }

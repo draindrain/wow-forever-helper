@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { classById, loadClass, raceById } from './data';
 import { clampLevel, useCharacters } from './lib/characters';
 import type { EventContext } from './lib/events';
@@ -6,6 +6,9 @@ import { useAsync } from './lib/useAsync';
 import { AboutDialog } from './components/AboutDialog';
 import { CharacterForm } from './components/CharacterForm';
 import { Header } from './components/Header';
+import { DungeonModal } from './components/modals/DungeonModal';
+import { ModalContext, type ModalApi, type ModalTarget } from './components/modals/ModalContext';
+import { ZoneModal } from './components/modals/ZoneModal';
 import { ClassTab } from './components/tabs/ClassTab';
 import { OverviewTab } from './components/tabs/OverviewTab';
 import { QuestsTab } from './components/tabs/QuestsTab';
@@ -37,6 +40,14 @@ export default function App() {
   const [editing, setEditing] = useState<Editing>(null);
   const [tab, setTabState] = useState<TabId>(savedTab);
   const [about, setAbout] = useState(false);
+  const [modal, setModal] = useState<ModalTarget>(null);
+  const modalApi = useMemo<ModalApi>(
+    () => ({
+      openZone: (id) => setModal({ kind: 'zone', id }),
+      openDungeon: (id) => setModal({ kind: 'dungeon', id }),
+    }),
+    [],
+  );
   const active = store.active;
 
   const race = active ? raceById(active.race) : undefined;
@@ -76,82 +87,104 @@ export default function App() {
   const View = tabViews[tab];
 
   return (
-    <div className="app">
-      <Header
-        characters={store.characters}
-        active={active}
-        race={race}
-        cls={cls}
-        spec={spec}
-        tab={tab}
-        showTabs={!showForm}
-        onTab={setTab}
-        onLevel={setLevel}
-        onSelect={(id) => {
-          store.select(id);
-          setEditing(null);
-        }}
-        onNew={() => setEditing({ mode: 'new' })}
-        onEdit={() => active && setEditing({ mode: 'edit', id: active.id })}
-        onAbout={() => setAbout(true)}
-      />
+    <ModalContext.Provider value={modalApi}>
+      <div className="app">
+        <Header
+          characters={store.characters}
+          active={active}
+          race={race}
+          cls={cls}
+          spec={spec}
+          tab={tab}
+          showTabs={!showForm}
+          onTab={setTab}
+          onLevel={setLevel}
+          onSelect={(id) => {
+            store.select(id);
+            setEditing(null);
+          }}
+          onNew={() => setEditing({ mode: 'new' })}
+          onEdit={() => active && setEditing({ mode: 'edit', id: active.id })}
+          onAbout={() => setAbout(true)}
+        />
 
-      <main className="main">
-        {showForm ? (
-          <section className="panel form-panel">
-            <header className="panel-title">
-              <h2>
-                {editingCharacter
-                  ? `Edit ${editingCharacter.name}`
-                  : active && !valid
-                    ? `Fix ${active.name}`
-                    : 'Create your character'}
-              </h2>
-            </header>
-            <div className="panel-body form-body">
-              {!active && (
-                <p className="intro">
-                  Keep this page open on a second screen while you level in World of Warcraft: Forever. Tell it who
-                  you're playing and bump the level each time you ding. Everything you need fits on one screen: what's
-                  new at your trainer, where to quest, which dungeons fit and what your trade skills can make.
-                </p>
-              )}
-              <CharacterForm
-                key={editingCharacter?.id ?? (active && !valid ? active.id : 'new')}
-                initial={editingCharacter ?? (active && !valid ? active : undefined)}
-                onSave={(c) => {
-                  store.upsert(c);
-                  setEditing(null);
-                }}
-                onCancel={active && valid ? () => setEditing(null) : undefined}
-                onDelete={
-                  editingCharacter
-                    ? () => {
-                        if (confirm(`Delete ${editingCharacter.name}? This can't be undone.`)) {
-                          store.remove(editingCharacter.id);
-                          setEditing(null);
+        <main className="main">
+          {showForm ? (
+            <section className="panel form-panel">
+              <header className="panel-title">
+                <h2>
+                  {editingCharacter
+                    ? `Edit ${editingCharacter.name}`
+                    : active && !valid
+                      ? `Fix ${active.name}`
+                      : 'Create your character'}
+                </h2>
+              </header>
+              <div className="panel-body form-body">
+                {!active && (
+                  <p className="intro">
+                    Keep this page open on a second screen while you level in World of Warcraft: Forever. Tell it who
+                    you're playing and bump the level each time you ding. Everything you need fits on one screen: what's
+                    new at your trainer, where to quest, which dungeons fit and what your trade skills can make.
+                  </p>
+                )}
+                <CharacterForm
+                  key={editingCharacter?.id ?? (active && !valid ? active.id : 'new')}
+                  initial={editingCharacter ?? (active && !valid ? active : undefined)}
+                  onSave={(c) => {
+                    store.upsert(c);
+                    setEditing(null);
+                  }}
+                  onCancel={active && valid ? () => setEditing(null) : undefined}
+                  onDelete={
+                    editingCharacter
+                      ? () => {
+                          if (confirm(`Delete ${editingCharacter.name}? This can't be undone.`)) {
+                            store.remove(editingCharacter.id);
+                            setEditing(null);
+                          }
                         }
-                      }
-                    : undefined
-                }
-              />
-            </div>
-          </section>
-        ) : (
-          <View
-            key={`${active.id}-${tab}`}
-            ctx={ctx}
+                      : undefined
+                  }
+                />
+              </div>
+            </section>
+          ) : (
+            <View
+              key={`${active.id}-${tab}`}
+              ctx={ctx}
+              character={active}
+              race={race}
+              cls={cls}
+              spec={spec}
+              onSkill={setSkill}
+              onTab={setTab}
+            />
+          )}
+        </main>
+
+        <AboutDialog open={about} onClose={() => setAbout(false)} />
+        {valid && modal?.kind === 'zone' && (
+          <ZoneModal
+            key={`zone-${modal.id}`}
+            zoneId={modal.id}
             character={active}
             race={race}
             cls={cls}
-            spec={spec}
-            onSkill={setSkill}
-            onTab={setTab}
+            onClose={() => setModal(null)}
           />
         )}
-      </main>
-
-      <AboutDialog open={about} onClose={() => setAbout(false)} />
-    </div>
+        {valid && modal?.kind === 'dungeon' && (
+          <DungeonModal
+            key={`dungeon-${modal.id}`}
+            dungeonId={modal.id}
+            character={active}
+            race={race}
+            cls={cls}
+            onClose={() => setModal(null)}
+          />
+        )}
+      </div>
+    </ModalContext.Provider>
   );
 }

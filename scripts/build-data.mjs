@@ -1,11 +1,11 @@
 // Turns the raw downloads in data-raw/ (see fetch-sources.mjs) into the JSON
 // the site loads from src/data/generated/.
 
-import { readFile, writeFile, mkdir, readdir, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir, rm, access } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'node-html-parser';
-import { WAGO_BUILD, CLASSES, PROFESSIONS } from './sources.mjs';
+import { WAGO_BUILD, CLASSES, PROFESSIONS, NOT_A_QUEST } from './sources.mjs';
 import {
   SPECS,
   RACES,
@@ -15,9 +15,16 @@ import {
   PROFESSION_RANKS,
   MILESTONES,
   ZONE_OVERRIDES,
+  INSTANCE_ZONES,
+  ATTUNEMENTS,
+  PINNED_MAPS,
+  BOSS_SPAWNS,
 } from './curated.mjs';
 import { extractJsonScript, listviews } from './lib/wowhead.mjs';
+import { parseItemTooltip } from './lib/item-tooltip.mjs';
 import { parseCsv } from './lib/csv.mjs';
+import { encounterBosses } from './lib/encounters.mjs';
+import { bossPins } from './lib/boss-pins.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const raw = (...p) => path.join(root, 'data-raw', ...p);
@@ -33,6 +40,24 @@ async function writeJson(rel, data) {
   const file = path.join(outDir, rel);
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, JSON.stringify(data) + '\n');
+}
+
+const fileExists = (file) =>
+  access(file).then(
+    () => true,
+    () => false,
+  );
+
+// ---------------------------------------------------------------- item tooltips
+
+const itemTips = new Map();
+/** Tooltip lines for an item from data-raw/wowhead/items (see fetch-sources "items"), or null. */
+async function itemTip(id) {
+  if (!itemTips.has(id)) {
+    const file = raw('wowhead', 'items', `${id}.json`);
+    itemTips.set(id, (await fileExists(file)) ? parseItemTooltip(JSON.parse(await readText(file))) : null);
+  }
+  return itemTips.get(id);
 }
 
 // ---------------------------------------------------------------- classes
@@ -182,6 +207,8 @@ async function buildProfession(prof) {
       const tag = text(nameEl.querySelector('.pw-row-tag'));
       nameEl.querySelector('.pw-row-tag')?.remove();
       const teacher = row.querySelector('.rd-teachers li span');
+      const product = /item=(\d+)/.exec(row.querySelector('a.pw-row-btn')?.getAttribute('href') ?? '')?.[1];
+      const tip = product ? await itemTip(Number(product)) : null;
       recipes.push({
         id: Number(row.getAttribute('data-r')),
         name: text(nameEl).replace(/[★◆✕]/g, '').trim(),
@@ -200,6 +227,8 @@ async function buildProfession(prof) {
           name: text(li.querySelector('.rd-reagent-name')),
           count: Number(text(li.querySelector('.rd-count')) || 1),
         })),
+        // What it makes, as the game's item tooltip shows it.
+        product: tip ? { name: tip.name, quality: tip.quality, lines: tip.lines } : undefined,
       });
     }
   }
@@ -223,14 +252,18 @@ async function buildInstances() {
       entryLevel: entry ? Number(entry[1]) : undefined,
       players: Number(text(row.querySelector('.df-players'))) || undefined,
       changed: row.getAttribute('data-status') === 'changed',
-      bosses: detail.querySelectorAll('.idt-boss').map((b) => text(b).replace(/[★◆]/g, '').trim()),
     });
   }
+  // Bosses come from the client's encounter table: wowforevertalents' boss lists pick up
+  // trash (Defias Watchman in the Deadmines) and miss bosses (Edwin VanCleef).
+  const encounters = parseCsv(await readText(raw('wago', 'DungeonEncounter.csv')));
   const dungeons = DUNGEONS.map((d) => {
     const c = client.get(d.client);
     if (!c) throw new Error(`dungeon ${d.id}: no client row "${d.client}"`);
-    const bosses = d.bosses ? c.bosses.filter((b) => d.bosses.includes(b)) : c.bosses;
-    const { client: _slug, bosses: _wing, ...rest } = d;
+    const all = d.map ? encounterBosses(encounters, d.map) : [];
+    const bosses = d.bosses ? all.filter((b) => d.bosses.includes(b)) : all;
+    if (d.bosses && bosses.length !== d.bosses.length) throw new Error(`dungeon ${d.id}: wing bosses not in the client`);
+    const { client: _slug, bosses: _wing, map: _map, ...rest } = d;
     return {
       ...rest,
       entryLevel: c.entryLevel,
@@ -238,11 +271,12 @@ async function buildInstances() {
       changed: !d.isNew && c.changed ? true : undefined,
       bosses,
       // Announced dungeons missing from this client build have no boss list yet.
-      inClient: c.bosses.length > 0,
+      inClient: all.length > 0,
     };
   });
   await writeJson('instances.json', { dungeons, raids: RAIDS, battlegrounds: BATTLEGROUNDS });
   console.log(`instances: ${dungeons.length} dungeons`);
+  return dungeons;
 }
 
 // ---------------------------------------------------------------- zones
@@ -253,8 +287,6 @@ const TERRITORY = { 0: 'Alliance', 1: 'Horde', 2: 'Contested', 3: 'Sanctuary' };
 // it can take; in the other faction's territory they must be its own quests.
 const MIN_QUESTS = 10;
 const MIN_OWN_QUESTS_IN_ENEMY_TERRITORY = 6;
-// Placeholder rows (<NYI>, <UNUSED>), Legacy reward pickups and similar aren't leveling quests.
-const NOT_A_QUEST = /^<|^Legacy Reward/;
 
 function percentile(sorted, p) {
   return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * p)))];
@@ -264,7 +296,11 @@ async function buildZones(races) {
   const list = JSON.parse(extractJsonScript(await readText(raw('wowhead', 'zones.html')), 'data.page.listPage.listviews'))[0]
     .data;
   const byId = new Map(list.map((z) => [z.id, z]));
-  const files = (await readdir(raw('wowhead'))).filter((f) => /^zone-\d+\.html$/.test(f));
+  // Dungeon and raid pages are fetched for their quests; they aren't leveling zones.
+  const instanceIds = new Set(Object.values(INSTANCE_ZONES).flat());
+  const files = (await readdir(raw('wowhead'))).filter(
+    (f) => /^zone-\d+\.html$/.test(f) && !instanceIds.has(Number(/\d+/.exec(f)[0])),
+  );
   const zones = [];
   for (const file of files) {
     const id = Number(/\d+/.exec(file)[0]);
@@ -348,6 +384,176 @@ async function buildZones(races) {
     const f = Object.entries(z.factions).map(([k, v]) => `${k[0]} ${v.min}-${v.max} (${v.quests}q)`).join(', ');
     console.log(`zone ${z.name}: ${f}; nodes ${z.nodes.length}`);
   }
+  return result;
+}
+
+// ---------------------------------------------------------------- quests
+
+const SIDES = { 1: 'Alliance', 2: 'Horde' };
+
+// Client class and race ids (as quest pages list them) -> this site's ids. Set by buildQuests.
+let questIds = { classes: new Map(), races: new Map() };
+const siteIds = (ids, map) => {
+  const out = Array.isArray(ids) ? ids.map((id) => map.get(id)).filter(Boolean) : [];
+  return out.length ? out : undefined;
+};
+
+async function loadQuestRecords() {
+  const dir = raw('wowhead', 'quests');
+  const records = new Map();
+  if (!(await fileExists(dir))) return records;
+  for (const file of await readdir(dir)) {
+    const q = JSON.parse(await readText(path.join(dir, file)));
+    if (!q.missing) records.set(q.id, q);
+  }
+  return records;
+}
+
+/** Quests Wowhead files under a zone or instance page, as listview rows. */
+async function zoneQuestRows(zoneId) {
+  const file = raw('wowhead', `zone-${zoneId}.html`);
+  if (!(await fileExists(file))) return [];
+  return (listviews(await readText(file)).quests ?? []).filter(
+    (q) => q.category === zoneId && q.level > 0 && !NOT_A_QUEST.test(q.name),
+  );
+}
+
+// Wowhead lists instance NPCs with an empty position ([""]).
+const isCoord = (c) => Array.isArray(c) && c.length === 2 && c.every(Number.isFinite);
+
+/** A giver with its map position, preferring a point in `zoneId` when it has several. */
+function giverOut(q, which, zoneId) {
+  const points = q.points.filter((p) => p.point === which);
+  const p = points.find((x) => x.zone === zoneId) ?? points[0];
+  const g = q[which];
+  if (!g && !p) return undefined;
+  const coord = isCoord(p?.coord) ? p.coord : undefined;
+  return { name: g?.name ?? p.name, kind: g?.kind ?? 'npc', zone: p?.zone, zoneName: p?.zoneName, coord };
+}
+
+/**
+ * Writes a bundle of quests: each quest with givers, chain position and rewards,
+ * the chains they belong to (with steps from other zones), and the reward items' tooltips.
+ */
+async function questBundle(rows, records, zoneId, extraIds = []) {
+  const quests = [];
+  const chains = {};
+  const items = {};
+  const seen = new Set();
+  const add = async (id, row) => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    const q = records.get(id);
+    if (!q && !row) return;
+    const rewards = q?.rewards ?? {
+      choices: row.itemchoices ?? [],
+      items: row.itemrewards ?? [],
+      xp: row.xp,
+      money: row.money ?? 0,
+      rep: [],
+    };
+    for (const [itemId] of [...rewards.choices, ...rewards.items]) {
+      const tip = await itemTip(itemId);
+      if (tip) items[itemId] = tip;
+    }
+    let chain;
+    if (q?.series) {
+      const key = String(q.series[0][0].id);
+      const step = q.series.findIndex((s) => s.some((x) => x.id === id)) + 1;
+      chain = { id: key, step, length: q.series.length };
+      chains[key] ??= q.series.map((s) =>
+        s.map((x) => {
+          const r = records.get(x.id);
+          return { id: x.id, name: x.name, level: r?.level, side: r?.side, zone: giverOut(r ?? { points: [] }, 'start', zoneId)?.zoneName };
+        }),
+      );
+    }
+    quests.push({
+      id,
+      name: q?.name ?? row.name,
+      level: q?.level ?? row.level,
+      reqLevel: q?.reqLevel ?? row.reqlevel,
+      side: q?.side ?? SIDES[row.side] ?? 'Both',
+      // Records fetched before the parser learned to drop description boilerplate.
+      summary: q?.summary && !/^A level/.test(q.summary) ? q.summary : undefined,
+      type: q?.type,
+      classes: siteIds(q?.classes, questIds.classes),
+      races: siteIds(q?.races, questIds.races),
+      start: q ? giverOut(q, 'start', zoneId) : undefined,
+      end: q ? giverOut(q, 'end', zoneId) : undefined,
+      chain,
+      rewards: {
+        xp: rewards.xp,
+        money: rewards.money || undefined,
+        choices: rewards.choices.filter(([i]) => items[i]),
+        items: rewards.items.filter(([i]) => items[i]),
+        rep: rewards.rep,
+      },
+    });
+  };
+  for (const row of rows) await add(row.id, row);
+  for (const id of extraIds) await add(id);
+  quests.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
+  return { quests, chains, items };
+}
+
+/** Boss pins for dungeons on a fitted, checked map (see scripts/fit-dungeon-maps.mjs). */
+async function loadBossMaps() {
+  const fitsFile = path.join(root, 'scripts', 'dungeon-maps.json');
+  const spawnsFile = raw('cmangos', 'dungeon-spawns.json');
+  if (!(await fileExists(fitsFile)) || !(await fileExists(spawnsFile))) {
+    console.log('boss pins: no dungeon-maps.json or cmangos spawns; skipping (run data:fetch --only=cmangos)');
+    return () => undefined;
+  }
+  const fits = JSON.parse(await readText(fitsFile));
+  const spawns = JSON.parse(await readText(spawnsFile));
+  return (d, bosses) => {
+    const map = DUNGEONS.find((x) => x.id === d.id)?.map;
+    if (!PINNED_MAPS.includes(map) || !fits[map]) return undefined;
+    return { bosses: bossPins(bosses, spawns, map, fits[map], BOSS_SPAWNS), mapCrop: fits[map].crop };
+  };
+}
+
+async function buildQuests(zoneList, dungeons) {
+  const records = await loadQuestRecords();
+  if (!records.size) {
+    console.log('quests: no quest records in data-raw/wowhead/quests; skipping (run data:fetch --only=quests)');
+    return;
+  }
+  const chrClasses = parseCsv(await readText(raw('wago', 'ChrClasses.csv')));
+  questIds = {
+    classes: new Map(chrClasses.map((r) => [Number(r.ID), r.Name_lang.toLowerCase()])),
+    races: new Map(RACES.map((r) => [r.clientId, r.id])),
+  };
+  for (const zone of zoneList) {
+    const bundle = await questBundle(await zoneQuestRows(zone.id), records, zone.id);
+    await writeJson(`quests/zone-${zone.id}.json`, { mapZone: zone.id, ...bundle });
+  }
+  const pinsFor = await loadBossMaps();
+  for (const d of [...dungeons, ...RAIDS]) {
+    const zoneIds = INSTANCE_ZONES[d.id] ?? [];
+    const rows = (await Promise.all(zoneIds.map(zoneQuestRows))).flat();
+    // Attunement and key chains, from the quest that completes each one.
+    const attunements = [];
+    for (const a of ATTUNEMENTS[d.id] ?? []) {
+      const last = records.get(a.quest);
+      if (!last) {
+        console.warn(`attunement ${d.id}: quest ${a.quest} not in Forever data, skipped`);
+        continue;
+      }
+      const steps = last.series ? last.series.map((s) => s.map((x) => x.id)) : [[a.quest]];
+      attunements.push({ title: a.title, faction: a.faction, optional: a.optional, quests: steps });
+    }
+    const bundle = await questBundle(rows, records, zoneIds[0], attunements.flatMap((a) => a.quests.flat()));
+    const pinned = d.bosses ? pinsFor(d, d.bosses) : undefined;
+    if (pinned) {
+      const n = pinned.bosses.filter((b) => b.pins.length).length;
+      console.log(`boss pins ${d.id}: ${n}/${pinned.bosses.length} bosses`);
+    }
+    await writeJson(`quests/dungeon-${d.id}.json`, { mapZone: zoneIds[0], ...bundle, attunements, ...pinned });
+  }
+  const sizes = { quests: records.size, items: [...itemTips.values()].filter(Boolean).length };
+  console.log(`quests: ${sizes.quests} quest records, ${sizes.items} item tooltips`);
 }
 
 // ---------------------------------------------------------------- main
@@ -358,8 +564,9 @@ for (const c of CLASSES) classMeta.push(await buildClass(c));
 const races = await buildRaces(classMeta);
 const professions = [];
 for (const p of PROFESSIONS) professions.push(await buildProfession(p));
-await buildInstances();
-await buildZones(races);
+const dungeons = await buildInstances();
+const zoneList = await buildZones(races);
+await buildQuests(zoneList, dungeons);
 await writeJson('meta.json', {
   clientBuild: WAGO_BUILD,
   generatedAt: new Date().toISOString().slice(0, 10),

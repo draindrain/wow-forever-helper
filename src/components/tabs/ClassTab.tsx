@@ -3,9 +3,10 @@ import { eventsAt, type EventContext } from '../../lib/events';
 import { learnableSpells, ranksAt, specTalentSpells, spellbook, talentState } from '../../lib/game';
 import type { Spell } from '../../types';
 import { FitList } from '../FitList';
-import { EventRow, SpellRow } from '../rows';
+import { EventRow, GearTip, SpellRow } from '../rows';
+import { SpellTip } from '../SpellTip';
 import { Badge, Icon, Panel, stackShare, Tooltip } from '../ui';
-import { NewAtLevel } from './OverviewTab';
+import { NewAtLevel, newAtLevelMinHeight } from './OverviewTab';
 import type { TabProps } from './types';
 
 const LOOKAHEAD = 12;
@@ -86,26 +87,28 @@ function MorePanel({ ctx, extraSchools }: { ctx: EventContext; extraSchools: { s
           {ctx.race.name} racials
         </li>
         {ctx.race.racials.map((r) => (
-          <li key={r.name} className="spell">
-            <Tooltip
-              content={
-                <>
-                  <div className="tt-head">
-                    <span className="tt-name">{r.name}</span>
-                  </div>
-                  {r.passive && <div className="tt-line">Passive</div>}
-                  {r.meta && <div className="tt-line">{r.meta}</div>}
-                  <div className="tt-desc">{r.desc}</div>
-                </>
-              }
-            >
-              <Icon icon={r.icon} size={30} />
-            </Tooltip>
+          <Tooltip
+            key={r.name}
+            as="li"
+            block
+            className="spell"
+            content={
+              <>
+                <div className="tt-head">
+                  <span className="tt-name">{r.name}</span>
+                </div>
+                {r.passive && <div className="tt-line">Passive</div>}
+                {r.meta && <div className="tt-line">{r.meta}</div>}
+                <div className="tt-desc">{r.desc}</div>
+              </>
+            }
+          >
+            <Icon icon={r.icon} size={30} />
             <div className="spell-text">
               <span className="spell-name">{r.name}</span>
               <span className="spell-sub clamp-1">{r.passive ? r.desc : (r.meta ?? 'Racial')}</span>
             </div>
-          </li>
+          </Tooltip>
         ))}
         {extraSchools.flatMap(({ school, spells }) => [
           <li key={`h-${school}`} className="coming-heading" data-fit-heading>
@@ -126,7 +129,13 @@ function MorePanel({ ctx, extraSchools }: { ctx: EventContext; extraSchools: { s
           </div>
         </li>
         {talents.map(({ spell, level: at }) => (
-          <li key={spell.name} className={`spell ${at > level ? 'is-future' : ''}`}>
+          <Tooltip
+            key={spell.name}
+            as="li"
+            block
+            className={`spell ${at > level ? 'is-future' : ''}`}
+            content={<SpellTip spell={spell} rank={spell.ranks[0]!} note={spell.note} />}
+          >
             <Icon icon={spell.icon} size={30} />
             <div className="spell-text">
               <span className="spell-name">{spell.name}</span>
@@ -135,7 +144,7 @@ function MorePanel({ ctx, extraSchools }: { ctx: EventContext; extraSchools: { s
               </span>
             </div>
             <Badge tone="purple">Talent</Badge>
-          </li>
+          </Tooltip>
         ))}
         {gear.length > 0 && (
           <li className="coming-heading" data-fit-heading>
@@ -143,13 +152,19 @@ function MorePanel({ ctx, extraSchools }: { ctx: EventContext; extraSchools: { s
           </li>
         )}
         {gear.map((g) => (
-          <li key={g.name} className={`spell ${g.level > level ? 'is-future' : ''}`}>
+          <Tooltip
+            key={g.name}
+            as="li"
+            block
+            className={`spell ${g.level > level ? 'is-future' : ''}`}
+            content={<GearTip item={g} />}
+          >
             <Icon icon={g.icon} size={30} />
             <div className="spell-text">
               <span className="spell-name">{g.name}</span>
               <span className="spell-sub">{g.level > level ? `From level ${g.level}` : `Since level ${g.level}`}</span>
             </div>
-          </li>
+          </Tooltip>
         ))}
       </FitList>
     </Panel>
@@ -178,8 +193,7 @@ export function ClassTab({ ctx, cls }: TabProps) {
       <div className="stack">
         <div
           className="stack-item"
-          // Never smaller than its title, stats and one row (plus the past-30 notice).
-          style={stackShare(Math.max(newCount, 1) + 3, ctx.character.level > 30 ? 200 : 170)}
+          style={stackShare(Math.max(newCount, 1) + 3, newAtLevelMinHeight(newCount, ctx.character.level))}
         >
           <NewAtLevel ctx={ctx} />
         </div>

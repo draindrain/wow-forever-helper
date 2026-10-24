@@ -12,7 +12,8 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "data:fetch": "node scripts/fetch-sources.mjs",
     "data:build": "node scripts/build-data.mjs",
-    "data": "npm run data:fetch && npm run data:build"
+    "data": "npm run data:fetch && npm run data:build",
+    "data:update": "node --env-file-if-exists=.env scripts/update-agent.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

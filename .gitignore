@@ -4,3 +4,6 @@ dist/
 # Raw downloads used by `npm run data:fetch`; regenerated on demand
 data-raw/
 .DS_Store
+# Local secrets (such as GITHUB_TOKEN for `npm run data:update`); never commit these
+.env
+.env.*

@@ -2,7 +2,7 @@
 
 [![Deploy](https://github.com/draindrain/wow-forever-helper/actions/workflows/deploy.yml/badge.svg)](https://github.com/draindrain/wow-forever-helper/actions/workflows/deploy.yml)
 
-**Open it: [draindrain.github.io/wow-forever-helper](https://draindrain.github.io/wow-forever-helper/)**
+**Open it: [wow.drnz.se](https://wow.drnz.se/)**
 
 A second-screen leveling cheat sheet for **World of Warcraft: Forever**. Create your character (race, class,
 spec and trade skills), bump the level each time you ding, and the page shows what matters at that level.

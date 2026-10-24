@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Second-screen leveling cheat sheet for World of Warcraft: Forever",
-  "homepage": "https://draindrain.github.io/wow-forever-helper/",
+  "homepage": "https://wow.drnz.se/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/draindrain/wow-forever-helper.git"

@@ -7,7 +7,7 @@ const base = process.env.BASE_PATH ?? '/';
 
 // The site's public address, for links that must be absolute (canonical URL, social
 // previews, sitemap). The deploy workflow sets it from GitHub Pages' own setting.
-const siteUrl = (process.env.SITE_URL || 'https://draindrain.github.io/wow-forever-helper').replace(/\/?$/, '/');
+const siteUrl = (process.env.SITE_URL || 'https://wow.drnz.se').replace(/\/?$/, '/');
 
 /** Fills %SITE_URL% in index.html and writes robots.txt and sitemap.xml for the site's address. */
 function siteFiles(): Plugin {

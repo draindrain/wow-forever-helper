@@ -951,7 +951,37 @@ kbd {
 .fit-text.fit-ideal { color: var(--d-yellow); }
 .fit-text.fit-easy { color: var(--d-green); }
 .fit-text.fit-grey { color: var(--d-grey); }
-.boss-list { margin: 0; padding-left: 22px; font-size: 0.9rem; columns: 2; column-gap: 18px; }
+.boss-list { margin: 0; padding: 0; list-style: none; font-size: 0.9rem; columns: 2; column-gap: 14px; }
+.boss-list li { display: flex; align-items: baseline; gap: 6px; padding: 1px 4px; border-radius: 3px; break-inside: avoid; }
+.boss-list li.is-hot { background: rgba(255, 209, 0, 0.12); }
+.boss-list li.is-unpinned { color: var(--muted); }
+.boss-num { flex: none; min-width: 18px; font-weight: 800; font-size: 0.8rem; text-align: center; color: var(--muted); }
+.boss-num.is-pinned {
+  color: #1a0f00;
+  background: radial-gradient(circle at 40% 35%, #fff2a0, var(--gold) 55%, #a87400);
+  border-radius: 50%;
+  line-height: 18px;
+  box-shadow: 0 0 0 1px #000;
+}
+
+/* Numbered boss pins on a dungeon map, like the boss list's numbers */
+.boss-pin {
+  display: inline-block;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 3px;
+  font-weight: 800;
+  font-size: 11px;
+  line-height: 17px;
+  text-align: center;
+  color: #1a0f00;
+  background: radial-gradient(circle at 40% 35%, #fff2a0, var(--gold) 55%, #a87400);
+  border-radius: 9px;
+  box-shadow: 0 0 0 1px #000, 0 1px 3px rgba(0, 0, 0, 0.8);
+  transition: transform 0.12s;
+}
+.boss-pin.is-maybe { opacity: 0.75; }
+.pin-wrap.is-hot .boss-pin { transform: scale(1.4); opacity: 1; box-shadow: 0 0 0 1px #000, 0 0 8px var(--gold); }
 
 /* The zone map, with "!" and "?" pins where quests are picked up and handed in */
 .quest-map {
@@ -963,6 +993,9 @@ kbd {
   box-shadow: 0 0 0 1px #000, inset 0 0 30px rgba(0, 0, 0, 0.8);
 }
 .quest-map img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* Boss maps zoom in on the drawn part of the image; the layer carries the image and its pins. */
+.quest-map:has(.map-layer) { overflow: hidden; }
+.map-layer { position: absolute; inset: 0; }
 .pin-wrap { position: absolute; z-index: 1; transform: translate(-50%, -55%); line-height: 1; }
 .pin-wrap.is-hot { z-index: 3; }
 .pin-wrap .tip-anchor { cursor: pointer; }

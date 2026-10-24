@@ -288,6 +288,13 @@ export interface Attunement {
   quests: number[][];
 }
 
+/** A boss and where it spawns, in percent of the instance map image. */
+export interface BossPins {
+  name: string;
+  pins: [number, number][];
+  note?: string;
+}
+
 export interface QuestBundle {
   /** Wowhead zone id whose map image to show. */
   mapZone?: number;
@@ -296,4 +303,8 @@ export interface QuestBundle {
   chains: Record<string, ChainStep[][]>;
   items: Record<string, ItemTip>;
   attunements?: Attunement[];
+  /** Dungeons only, when its map has checked boss positions; same order as its boss list. */
+  bosses?: BossPins[];
+  /** The drawn part of the map image (x0, y0, x1, y1 in percent), to zoom to. */
+  mapCrop?: [number, number, number, number];
 }

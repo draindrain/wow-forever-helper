@@ -11,15 +11,18 @@
 //     Wowhead serves a JS challenge to plain HTTP clients, so pages are rendered in
 //     a headless Chromium through playwright-core. Point CHROMIUM_PATH at a
 //     Chrome/Chromium binary if it isn't found automatically.
+//   - CMaNGOS classic-db ("cmangos"): Classic's creature spawns, for boss positions
+//     in the dungeons Forever keeps unchanged (13 MB download).
 //
-// Usage: node scripts/fetch-sources.mjs [--only=wft,wago,wowhead,quests,items] [--force]
+// Usage: node scripts/fetch-sources.mjs [--only=wft,wago,wowhead,quests,items,cmangos] [--force]
 
 import { mkdir, writeFile, readFile, readdir, access } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WAGO_BUILD, CLASSES, PROFESSIONS, ZONE_EXCLUDE, CITY_ZONE_IDS, NOT_A_QUEST } from './sources.mjs';
-import { ATTUNEMENTS, INSTANCE_ZONES } from './curated.mjs';
+import { WAGO_BUILD, CLASSES, PROFESSIONS, ZONE_EXCLUDE, CITY_ZONE_IDS, NOT_A_QUEST, CMANGOS_DUMP } from './sources.mjs';
+import { ATTUNEMENTS, INSTANCE_ZONES, DUNGEONS } from './curated.mjs';
+import { dungeonSpawns } from './lib/cmangos.mjs';
+import { findChromium } from './lib/chromium.mjs';
 import { extractJsonScript, listviews } from './lib/wowhead.mjs';
 import { parseQuestPage } from './lib/wowhead-quest.mjs';
 
@@ -43,13 +46,13 @@ async function exists(file) {
   }
 }
 
-async function download(url, file) {
+async function download(url, file, { binary = false } = {}) {
   if (!force && (await exists(file))) return false;
   for (let attempt = 1; ; attempt++) {
     const res = await fetch(url, { headers: { 'User-Agent': 'wow-forever-helper data fetch' } });
     if (res.ok) {
       await mkdir(path.dirname(file), { recursive: true });
-      await writeFile(file, await res.text());
+      await writeFile(file, binary ? Buffer.from(await res.arrayBuffer()) : await res.text());
       return true;
     }
     if (attempt >= 4) throw new Error(`${url} -> HTTP ${res.status}`);
@@ -73,26 +76,11 @@ async function fetchWft() {
 }
 
 async function fetchWago() {
-  for (const table of ['CharBaseInfo', 'ChrRaces', 'ChrClasses']) {
+  for (const table of ['CharBaseInfo', 'ChrRaces', 'ChrClasses', 'DungeonEncounter']) {
     const url = `https://wago.tools/db2/${table}/csv?build=${WAGO_BUILD}`;
     const fetched = await download(url, path.join(rawDir, 'wago', `${table}.csv`));
     console.log(`${fetched ? 'fetched' : 'cached '} wago ${table}`);
   }
-}
-
-function findChromium() {
-  const candidates = [
-    process.env.CHROMIUM_PATH,
-    '/opt/pw-browsers/chromium',
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-    '/usr/bin/google-chrome',
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-  ].filter(Boolean);
-  const found = candidates.find((p) => existsSync(p));
-  if (!found) throw new Error('No Chrome/Chromium found; set CHROMIUM_PATH to fetch Wowhead pages.');
-  return found;
 }
 
 /**
@@ -272,6 +260,16 @@ async function fetchQuests() {
   }
 }
 
+/** Classic creature spawns in the dungeons' maps, from the CMaNGOS database dump. */
+async function fetchCmangos() {
+  const dump = path.join(rawDir, 'cmangos', path.basename(CMANGOS_DUMP));
+  console.log(`${(await download(CMANGOS_DUMP, dump, { binary: true })) ? 'fetched' : 'cached '} cmangos dump`);
+  const maps = [...new Set(DUNGEONS.map((d) => d.map).filter(Boolean))];
+  const out = await dungeonSpawns(dump, maps);
+  await writeFile(path.join(rawDir, 'cmangos', 'dungeon-spawns.json'), JSON.stringify(out));
+  console.log(`cmangos: ${out.spawns.length} spawns in ${maps.length} dungeon maps`);
+}
+
 /** Item tooltips (quest rewards, crafted items, reagents) from Wowhead's tooltip API. */
 async function fetchItems() {
   const dir = path.join(rawDir, 'wowhead', 'items');
@@ -313,4 +311,5 @@ if (want('wago')) await fetchWago();
 if (want('wowhead')) await fetchWowhead();
 if (want('quests')) await fetchQuests();
 if (want('items')) await fetchItems();
+if (want('cmangos')) await fetchCmangos();
 console.log('done');

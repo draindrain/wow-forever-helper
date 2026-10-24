@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { instances, loadDungeonQuests, mapUrl } from '../../data';
+import { instances, loadDungeonQuests } from '../../data';
 import { dungeonFit } from '../../lib/game';
 import { useAsync } from '../../lib/useAsync';
 import type { Attunement, Character, ClassMeta, QuestBundle, Race } from '../../types';
 import { Badge, StatusMark } from '../ui';
+import { BossMap } from './BossMap';
 import { Modal } from './Modal';
 import { QuestList, questsFor } from './QuestList';
 import { QuestCard, type HoverProps } from './QuestViews';
@@ -74,7 +75,6 @@ export function DungeonModal({
   const raid = instances.raids.find((r) => r.id === dungeonId);
   const bundle = useAsync(`dungeon-quests:${dungeonId}`, () => loadDungeonQuests(dungeonId));
   const [hovered, setHovered] = useState<number>();
-  const [mapFailed, setMapFailed] = useState(false);
   const level = character.level;
 
   const attunements = (bundle?.attunements ?? []).filter((a) => !a.faction || a.faction === race.faction);
@@ -102,11 +102,6 @@ export function DungeonModal({
     >
       <div className="modal-split">
         <aside className="modal-side">
-          {bundle?.mapZone && !mapFailed && (
-            <div className="quest-map">
-              <img src={mapUrl(bundle.mapZone)} alt="" onError={() => setMapFailed(true)} />
-            </div>
-          )}
           <dl className="facts">
             {dungeon && (
               <>
@@ -141,16 +136,12 @@ export function DungeonModal({
               </>
             )}
           </dl>
-          {dungeon && dungeon.bosses.length > 0 && (
-            <>
-              <h4>Bosses</h4>
-              <ol className="boss-list">
-                {dungeon.bosses.map((b) => (
-                  <li key={b}>{b}</li>
-                ))}
-              </ol>
-            </>
-          )}
+          <BossMap
+            zoneId={bundle?.mapZone}
+            bosses={dungeon?.bosses ?? []}
+            pins={bundle?.bosses}
+            crop={bundle?.mapCrop}
+          />
           {dungeon && !dungeon.inClient && (
             <p className="small muted">Announced by Blizzard; not in the current client build yet.</p>
           )}

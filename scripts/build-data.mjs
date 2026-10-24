@@ -17,10 +17,14 @@ import {
   ZONE_OVERRIDES,
   INSTANCE_ZONES,
   ATTUNEMENTS,
+  PINNED_MAPS,
+  BOSS_SPAWNS,
 } from './curated.mjs';
 import { extractJsonScript, listviews } from './lib/wowhead.mjs';
 import { parseItemTooltip } from './lib/item-tooltip.mjs';
 import { parseCsv } from './lib/csv.mjs';
+import { encounterBosses } from './lib/encounters.mjs';
+import { bossPins } from './lib/boss-pins.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const raw = (...p) => path.join(root, 'data-raw', ...p);
@@ -248,14 +252,18 @@ async function buildInstances() {
       entryLevel: entry ? Number(entry[1]) : undefined,
       players: Number(text(row.querySelector('.df-players'))) || undefined,
       changed: row.getAttribute('data-status') === 'changed',
-      bosses: detail.querySelectorAll('.idt-boss').map((b) => text(b).replace(/[★◆]/g, '').trim()),
     });
   }
+  // Bosses come from the client's encounter table: wowforevertalents' boss lists pick up
+  // trash (Defias Watchman in the Deadmines) and miss bosses (Edwin VanCleef).
+  const encounters = parseCsv(await readText(raw('wago', 'DungeonEncounter.csv')));
   const dungeons = DUNGEONS.map((d) => {
     const c = client.get(d.client);
     if (!c) throw new Error(`dungeon ${d.id}: no client row "${d.client}"`);
-    const bosses = d.bosses ? c.bosses.filter((b) => d.bosses.includes(b)) : c.bosses;
-    const { client: _slug, bosses: _wing, ...rest } = d;
+    const all = d.map ? encounterBosses(encounters, d.map) : [];
+    const bosses = d.bosses ? all.filter((b) => d.bosses.includes(b)) : all;
+    if (d.bosses && bosses.length !== d.bosses.length) throw new Error(`dungeon ${d.id}: wing bosses not in the client`);
+    const { client: _slug, bosses: _wing, map: _map, ...rest } = d;
     return {
       ...rest,
       entryLevel: c.entryLevel,
@@ -263,11 +271,12 @@ async function buildInstances() {
       changed: !d.isNew && c.changed ? true : undefined,
       bosses,
       // Announced dungeons missing from this client build have no boss list yet.
-      inClient: c.bosses.length > 0,
+      inClient: all.length > 0,
     };
   });
   await writeJson('instances.json', { dungeons, raids: RAIDS, battlegrounds: BATTLEGROUNDS });
   console.log(`instances: ${dungeons.length} dungeons`);
+  return dungeons;
 }
 
 // ---------------------------------------------------------------- zones
@@ -488,7 +497,24 @@ async function questBundle(rows, records, zoneId, extraIds = []) {
   return { quests, chains, items };
 }
 
-async function buildQuests(zoneList) {
+/** Boss pins for dungeons on a fitted, checked map (see scripts/fit-dungeon-maps.mjs). */
+async function loadBossMaps() {
+  const fitsFile = path.join(root, 'scripts', 'dungeon-maps.json');
+  const spawnsFile = raw('cmangos', 'dungeon-spawns.json');
+  if (!(await fileExists(fitsFile)) || !(await fileExists(spawnsFile))) {
+    console.log('boss pins: no dungeon-maps.json or cmangos spawns; skipping (run data:fetch --only=cmangos)');
+    return () => undefined;
+  }
+  const fits = JSON.parse(await readText(fitsFile));
+  const spawns = JSON.parse(await readText(spawnsFile));
+  return (d, bosses) => {
+    const map = DUNGEONS.find((x) => x.id === d.id)?.map;
+    if (!PINNED_MAPS.includes(map) || !fits[map]) return undefined;
+    return { bosses: bossPins(bosses, spawns, map, fits[map], BOSS_SPAWNS), mapCrop: fits[map].crop };
+  };
+}
+
+async function buildQuests(zoneList, dungeons) {
   const records = await loadQuestRecords();
   if (!records.size) {
     console.log('quests: no quest records in data-raw/wowhead/quests; skipping (run data:fetch --only=quests)');
@@ -503,7 +529,8 @@ async function buildQuests(zoneList) {
     const bundle = await questBundle(await zoneQuestRows(zone.id), records, zone.id);
     await writeJson(`quests/zone-${zone.id}.json`, { mapZone: zone.id, ...bundle });
   }
-  for (const d of [...DUNGEONS, ...RAIDS]) {
+  const pinsFor = await loadBossMaps();
+  for (const d of [...dungeons, ...RAIDS]) {
     const zoneIds = INSTANCE_ZONES[d.id] ?? [];
     const rows = (await Promise.all(zoneIds.map(zoneQuestRows))).flat();
     // Attunement and key chains, from the quest that completes each one.
@@ -518,7 +545,12 @@ async function buildQuests(zoneList) {
       attunements.push({ title: a.title, faction: a.faction, optional: a.optional, quests: steps });
     }
     const bundle = await questBundle(rows, records, zoneIds[0], attunements.flatMap((a) => a.quests.flat()));
-    await writeJson(`quests/dungeon-${d.id}.json`, { mapZone: zoneIds[0], ...bundle, attunements });
+    const pinned = d.bosses ? pinsFor(d, d.bosses) : undefined;
+    if (pinned) {
+      const n = pinned.bosses.filter((b) => b.pins.length).length;
+      console.log(`boss pins ${d.id}: ${n}/${pinned.bosses.length} bosses`);
+    }
+    await writeJson(`quests/dungeon-${d.id}.json`, { mapZone: zoneIds[0], ...bundle, attunements, ...pinned });
   }
   const sizes = { quests: records.size, items: [...itemTips.values()].filter(Boolean).length };
   console.log(`quests: ${sizes.quests} quest records, ${sizes.items} item tooltips`);
@@ -532,9 +564,9 @@ for (const c of CLASSES) classMeta.push(await buildClass(c));
 const races = await buildRaces(classMeta);
 const professions = [];
 for (const p of PROFESSIONS) professions.push(await buildProfession(p));
-await buildInstances();
+const dungeons = await buildInstances();
 const zoneList = await buildZones(races);
-await buildQuests(zoneList);
+await buildQuests(zoneList, dungeons);
 await writeJson('meta.json', {
   clientBuild: WAGO_BUILD,
   generatedAt: new Date().toISOString().slice(0, 10),

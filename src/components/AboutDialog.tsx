@@ -36,11 +36,12 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
         <h4>Where the data comes from</h4>
         <ul>
           <li>
-            Spells, ranks, racials, recipes and dungeon bosses: read from the Forever beta client (build{' '}
-            {meta.clientBuild}) by <a href="https://wowforevertalents.com/">wowforevertalents.com</a>.
+            Spells, ranks, racials and recipes: read from the Forever beta client (build {meta.clientBuild}) by{' '}
+            <a href="https://wowforevertalents.com/">wowforevertalents.com</a>.
           </li>
           <li>
-            Race and class combinations: client tables via <a href="https://wago.tools/">wago.tools</a>.
+            Race and class combinations and dungeon bosses: client tables via{' '}
+            <a href="https://wago.tools/">wago.tools</a>.
           </li>
           <li>
             Zone quest levels and gathering nodes:{' '}
@@ -50,6 +51,11 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
           <li>
             Quests (givers, coordinates, chains, rewards), zone maps and item tooltips: Wowhead's Forever database. Keys
             and attunements follow Classic and show only when their quests are in Forever's data.
+          </li>
+          <li>
+            Boss pins on dungeon maps: Classic's spawn positions from the{' '}
+            <a href="https://github.com/cmangos/classic-db">CMaNGOS</a> database, on the Classic dungeons Forever keeps
+            unchanged.
           </li>
           <li>
             Dungeon level ranges, raids, dual spec and other milestones: Blizzard's announcements, via{' '}

@@ -14,7 +14,8 @@
 //   - CMaNGOS classic-db ("cmangos"): Classic's creature spawns, for boss positions
 //     in the dungeons Forever keeps unchanged (13 MB download).
 //
-// Usage: node scripts/fetch-sources.mjs [--only=wft,wago,wowhead,quests,items,cmangos] [--force]
+// Usage: node scripts/fetch-sources.mjs [--only=wft,wago,wowhead,quests,items,cmangos] [--force[=steps]]
+// --force re-downloads what is already in data-raw/; --force=wft,wowhead limits that to those steps.
 
 import { mkdir, writeFile, readFile, readdir, access } from 'node:fs/promises';
 import path from 'node:path';
@@ -30,7 +31,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const rawDir = path.join(root, 'data-raw');
 
 const args = process.argv.slice(2);
-const force = args.includes('--force');
+const forceArg = args.find((a) => a === '--force' || a.startsWith('--force='));
+const forceSteps = forceArg?.startsWith('--force=') ? new Set(forceArg.slice(8).split(',')) : null;
+// Set per step below: whether this step re-downloads files it already has.
+let force = false;
 const onlyArg = args.find((a) => a.startsWith('--only='));
 const only = onlyArg ? new Set(onlyArg.slice(7).split(',')) : null;
 const want = (name) => !only || only.has(name);
@@ -306,10 +310,10 @@ async function fetchItems() {
   );
 }
 
-if (want('wft')) await fetchWft();
-if (want('wago')) await fetchWago();
-if (want('wowhead')) await fetchWowhead();
-if (want('quests')) await fetchQuests();
-if (want('items')) await fetchItems();
-if (want('cmangos')) await fetchCmangos();
+const steps = { wft: fetchWft, wago: fetchWago, wowhead: fetchWowhead, quests: fetchQuests, items: fetchItems, cmangos: fetchCmangos };
+for (const [name, run] of Object.entries(steps)) {
+  if (!want(name)) continue;
+  force = !!forceArg && (!forceSteps || forceSteps.has(name));
+  await run();
+}
 console.log('done');

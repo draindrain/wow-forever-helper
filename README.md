@@ -92,6 +92,39 @@ When a new Forever build lands (or after launch):
 5. Facts that aren't in any machine-readable source (dungeon ranges, milestones, profession rank levels, zone
    notes) are in `scripts/curated.mjs`, each with its source. Update them as Blizzard confirms things.
 
+### Weekly updates with the research agent
+
+`npm run data:update` (`scripts/update-agent.mjs`) does the refresh above and then asks a Claude Sonnet agent
+to review it:
+
+- It bumps `WAGO_BUILD` when wago.tools has a newer Forever client build, re-downloads the listing pages
+  (wowforevertalents, wago tables, Wowhead zones), fetches only quest pages and item tooltips that are new, and
+  rebuilds the data.
+- It diffs the generated data before and after: spells, racials, recipes, zones, dungeons, raids, quests,
+  milestones and profession ranks that were added, removed or changed.
+- The agent reads that diff and `scripts/curated.mjs`, searches Blizzard's news and forums, warcraft.wiki.gg,
+  Wowhead and a few other sites for Forever announcements, and fixes curated facts that a page it read confirms.
+  Every edit must cite its sources and is undone if the file stops loading; it never touches the boss-pin settings.
+- It writes `data-raw/update-report.md`: the agent's summary, the data changes, the edits with their sources,
+  and anything that needs a person (suspected scraping problems, unconfirmed news).
+
+Nothing is committed by the script. `.github/workflows/data-update.yml` runs it every Monday (or from the
+**Actions** tab) and, when something changed, opens a pull request with the report as its description, so you
+review and merge it like any other change.
+
+Setup:
+
+1. Add your Anthropic API key as a repository secret named **`ANTHROPIC_API_KEY`**: **Settings → Secrets and
+   variables → Actions → New repository secret**. Don't commit it to a file.
+2. In **Settings → Actions → General**, under *Workflow permissions*, tick **Allow GitHub Actions to create and
+   approve pull requests** so the workflow can open its pull request.
+
+To run it locally, put `ANTHROPIC_API_KEY=...` in a `.env` file in the repository root (git-ignored) and run
+`npm run data:update`. Add `-- --no-agent` to skip the agent, or `-- --skip-fetch` to rerun the agent on the data
+you already have. A run costs roughly a dollar or two in API usage (Claude Sonnet, plus up to 15 web searches);
+the script prints an estimate. Changes to quests that already exist aren't re-fetched weekly; run
+`npm run data:fetch -- --only=quests --force` now and then for a full refresh.
+
 ## Deployment
 
 `.github/workflows/deploy.yml` builds the site and deploys it to GitHub Pages on every push to `main`

@@ -3,16 +3,59 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WoW Forever Helper</title>
+    <title>WoW Forever Helper – leveling cheat sheet for World of Warcraft: Forever</title>
     <meta
       name="description"
       content="A second-screen leveling cheat sheet for World of Warcraft: Forever: new spells per level, where to quest, dungeons in range and trade skill skill-ups for your character."
     />
+    <link rel="canonical" href="%SITE_URL%" />
     <meta name="theme-color" content="#0b0906" />
+    <meta name="color-scheme" content="dark" />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Icons and maps come from Wowhead's CDN. -->
+    <link rel="preconnect" href="https://wow.zamimg.com" crossorigin />
+    <link rel="dns-prefetch" href="https://wow.zamimg.com" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="WoW Forever Helper" />
+    <meta property="og:title" content="WoW Forever Helper" />
+    <meta
+      property="og:description"
+      content="Second-screen leveling cheat sheet for World of Warcraft: Forever: new spells, quest zones, dungeons and trade skills for your level."
+    />
+    <meta property="og:url" content="%SITE_URL%" />
+    <meta property="og:image" content="%SITE_URL%og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The WoW Forever Helper overview for a level 24 character" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "WoW Forever Helper",
+        "url": "%SITE_URL%",
+        "description": "Second-screen leveling cheat sheet for World of Warcraft: Forever.",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <p style="color: #ecdfc3; background: #0b0906; font-family: sans-serif; padding: 2rem">
+        WoW Forever Helper is a leveling cheat sheet for World of Warcraft: Forever. It needs JavaScript to run.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

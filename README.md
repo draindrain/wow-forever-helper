@@ -107,10 +107,11 @@ to review it:
   Every edit must cite its sources and is undone if the file stops loading; it never touches the boss-pin settings.
 - It writes `data-raw/update-report.md`: the agent's summary, the data changes, the edits with their sources,
   and anything that needs a person (suspected scraping problems, unconfirmed news).
+- When anything changed, it builds the site, commits the changes to a new `data-update/<date>` branch, pushes
+  it and opens a pull request with the report as its description, so you review and merge it like any other
+  change. Nothing reaches the site before that. If nothing changed, there's no pull request.
 
-Nothing is committed by the script. `.github/workflows/data-update.yml` runs it every Monday (or from the
-**Actions** tab) and, when something changed, opens a pull request with the report as its description, so you
-review and merge it like any other change.
+`.github/workflows/data-update.yml` runs it every Monday, or from the **Actions** tab.
 
 Setup:
 
@@ -119,11 +120,13 @@ Setup:
 2. In **Settings → Actions → General**, under *Workflow permissions*, tick **Allow GitHub Actions to create and
    approve pull requests** so the workflow can open its pull request.
 
-To run it locally, put `ANTHROPIC_API_KEY=...` in a `.env` file in the repository root (git-ignored) and run
-`npm run data:update`. Add `-- --no-agent` to skip the agent, or `-- --skip-fetch` to rerun the agent on the data
-you already have. A run costs roughly a dollar or two in API usage (Claude Sonnet, plus up to 15 web searches);
-the script prints an estimate. Changes to quests that already exist aren't re-fetched weekly; run
-`npm run data:fetch -- --only=quests --force` now and then for a full refresh.
+To run it locally, put `ANTHROPIC_API_KEY=...` in a `.env` file in the repository root (git-ignored), check out
+an up-to-date `main` and run `npm run data:update`. Opening the pull request needs a GitHub login: `gh auth login`,
+or a `GITHUB_TOKEN=...` line in `.env` (a token that can push and open pull requests on this repository). Add
+`-- --no-pr` to leave the changes in your working tree instead, `-- --no-agent` to skip the agent, or
+`-- --skip-fetch` to rerun the agent on the data you already have. A run costs roughly a dollar or two in API
+usage (Claude Sonnet, plus up to 15 web searches); the script prints an estimate. Changes to quests that already
+exist aren't re-fetched weekly; run `npm run data:fetch -- --only=quests --force` now and then for a full refresh.
 
 ## Deployment
 

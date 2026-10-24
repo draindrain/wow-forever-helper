@@ -6,15 +6,17 @@
 // 2. Diffs the generated data before and after (scripts/lib/data-digest.mjs).
 // 3. Agent (Claude Sonnet, with web search): explains the changes, looks for Blizzard news the
 //    scripts can't see, and fixes hand-curated facts in scripts/curated.mjs when a source it
-//    read confirms them. Every edit is checked (the file must still load) and listed with its
-//    sources; nothing is committed here, so a person reviews it all (in CI, as a pull request).
+//    read confirms them. Every edit is checked (the file must still load) and listed with its sources.
 // 4. Writes data-raw/update-report.md, plus the full diff in data-raw/update-digest.json.
+// 5. When anything changed: builds the site, commits the changes to a new branch, pushes it and
+//    opens a pull request with the report as its description, so a person reviews it all.
 //
 // The agent needs an Anthropic API key: ANTHROPIC_API_KEY in the environment, or in a
 // git-ignored .env file (`npm run data:update` loads it). Each run costs roughly a dollar or
-// two; the script prints its estimate.
+// two; the script prints its estimate. The pull request needs a GitHub token with permission
+// to push and open pull requests: GITHUB_TOKEN (or GH_TOKEN), or a logged-in `gh` CLI.
 //
-// Usage: node scripts/update-agent.mjs [--skip-fetch] [--no-agent]
+// Usage: node scripts/update-agent.mjs [--skip-fetch] [--no-agent] [--no-pr]
 
 import { readFile, writeFile, mkdir, appendFile } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
@@ -33,6 +35,7 @@ const digestFile = path.join(root, 'data-raw', 'update-digest.json');
 const args = process.argv.slice(2);
 const skipFetch = args.includes('--skip-fetch');
 const noAgent = args.includes('--no-agent');
+const noPr = args.includes('--no-pr');
 const today = new Date().toISOString().slice(0, 10);
 const notes = [];
 
@@ -293,8 +296,104 @@ async function runAgent(digestMarkdown) {
   return { report, edits, cost };
 }
 
+// ---------------------------------------------------------------- 5. pull request
+
+// The files a run changes; only these go into its pull request.
+const PR_PATHS = ['src/data/generated', 'scripts/curated.mjs', 'scripts/sources.mjs'];
+const PR_BASE = process.env.PR_BASE || 'main';
+
+function git(...gitArgs) {
+  const r = spawnSync('git', gitArgs, { cwd: root, encoding: 'utf8' });
+  if (r.status !== 0) throw new Error(`git ${gitArgs.join(' ')}: ${(r.stderr || r.stdout).trim()}`);
+  return r.stdout.trim();
+}
+
+/** Why a pull request can't be opened from this checkout, or null if it can. */
+function prBlocker() {
+  try {
+    const branch = git('rev-parse', '--abbrev-ref', 'HEAD');
+    if (branch !== PR_BASE) return `the checkout is on "${branch}", not ${PR_BASE}`;
+    if (git('status', '--porcelain', '--', ...PR_PATHS))
+      return `${PR_PATHS.join(', ')} had uncommitted changes before the run`;
+    return null;
+  } catch (err) {
+    return err.message;
+  }
+}
+
+function githubToken() {
+  if (process.env.GITHUB_TOKEN || process.env.GH_TOKEN) return process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  const gh = spawnSync('gh', ['auth', 'token'], { encoding: 'utf8' });
+  return gh.status === 0 ? gh.stdout.trim() : null;
+}
+
+/** "owner/repo" from GitHub Actions, or from the origin remote's URL. */
+function githubRepo() {
+  if (process.env.GITHUB_REPOSITORY) return process.env.GITHUB_REPOSITORY;
+  const match = /[/:]([^/:]+)\/([^/]+?)(\.git)?$/.exec(git('remote', 'get-url', 'origin'));
+  if (!match) throw new Error('can’t tell the GitHub repository from the origin remote; set GITHUB_REPOSITORY');
+  return `${match[1]}/${match[2]}`;
+}
+
+/** Builds the site, commits the run's changes to a new branch, pushes it and opens a pull request. */
+async function openPullRequest(report) {
+  const token = githubToken();
+  if (!token) throw new Error('no GitHub token: set GITHUB_TOKEN, or log in with `gh auth login`');
+  console.log('\n== building the site before opening the pull request');
+  const build = spawnSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build'], {
+    cwd: root,
+    stdio: 'inherit',
+  });
+  if (build.status !== 0) throw new Error('the site doesn’t build with these changes, so no pull request was opened');
+
+  const branch = `data-update/${today}-${Date.now().toString(36)}`;
+  const title = `Data update ${today}`;
+  git('switch', '-c', branch);
+  try {
+    git('add', '--', ...PR_PATHS);
+    // CI runners have no git identity; commit as the Actions bot there.
+    const identity =
+      spawnSync('git', ['config', 'user.email'], { cwd: root }).status === 0
+        ? []
+        : [
+            '-c',
+            'user.name=github-actions[bot]',
+            '-c',
+            'user.email=41898282+github-actions[bot]@users.noreply.github.com',
+          ];
+    git(
+      ...identity,
+      'commit',
+      '-m',
+      `${title}\n\nOpened by scripts/update-agent.mjs; see the pull request for the report.`,
+    );
+    git('push', '-u', 'origin', branch);
+  } finally {
+    // Back to the base branch; the changes now live on the pull request's branch.
+    git('switch', PR_BASE);
+  }
+
+  // GitHub caps a description at 65,536 characters; the full report is in the run's log.
+  const body = report.length > 60000 ? `${report.slice(0, 60000)}\n\n…report cut short; see the run's log.` : report;
+  const api = process.env.GITHUB_API_URL || 'https://api.github.com';
+  const res = await fetch(`${api}/repos/${githubRepo()}/pulls`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      accept: 'application/vnd.github+json',
+      'x-github-api-version': '2022-11-28',
+      'user-agent': 'wow-forever-helper data update',
+    },
+    body: JSON.stringify({ title, head: branch, base: PR_BASE, body }),
+  });
+  if (!res.ok) throw new Error(`GitHub refused the pull request (HTTP ${res.status}): ${await res.text()}`);
+  return (await res.json()).html_url;
+}
+
 // ---------------------------------------------------------------- main
 
+// Checked before anything changes, so the pull request only ever holds this run's changes.
+const prBlocked = noPr ? null : prBlocker();
 const before = await snapshot(generatedDir);
 if (!skipFetch) await refresh();
 if (!(await runScript('build-data.mjs'))) {
@@ -333,6 +432,9 @@ if (agent?.edits.length)
       .join('\n')}`,
   );
 if (agent) notes.push(`Research agent: ${MODEL}, about $${agent.cost.toFixed(2)} this run.`);
+const changed = !isEmpty(changes) || !!agent?.edits.length;
+if (noPr) notes.push('No pull request (--no-pr); the changes are left in the working tree.');
+else if (changed && prBlocked) notes.push(`No pull request: ${prBlocked}. The changes are left in the working tree.`);
 if (notes.length) sections.push(`## Notes\n\n${notes.map((n) => `- ${n}`).join('\n')}`);
 const report = sections.join('\n\n') + '\n';
 
@@ -340,8 +442,16 @@ await mkdir(path.dirname(reportFile), { recursive: true });
 await writeFile(reportFile, report);
 await writeFile(digestFile, JSON.stringify(changes, null, 2));
 console.log(`\n== report (${path.relative(root, reportFile)})\n\n${report}`);
-const changed = !isEmpty(changes) || !!agent?.edits.length;
-if (!changed) console.log('Nothing changed.');
-// In GitHub Actions: tell the workflow whether to open a pull request, and show the report.
-if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `changed=${changed}\n`);
 if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, report);
+
+if (!changed) console.log('Nothing changed, so no pull request.');
+else if (!noPr && !prBlocked) {
+  try {
+    const url = await openPullRequest(report);
+    console.log(`\n== pull request: ${url}`);
+    if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, `\nPull request: ${url}\n`);
+  } catch (err) {
+    console.error(`\nCouldn't open the pull request: ${err.message}`);
+    process.exitCode = 1;
+  }
+}

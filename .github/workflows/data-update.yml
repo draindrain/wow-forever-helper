@@ -1,8 +1,8 @@
 name: Data update
 
-# Weekly: refresh the data, let the research agent check for news and fix curated facts,
-# and open a pull request with the changes and the agent's report. Nothing reaches the
-# site until that pull request is merged.
+# Weekly: refresh the data, let the research agent check for news and fix curated facts;
+# when anything changed, the script builds the site and opens a pull request with the
+# changes and the agent's report. Nothing reaches the site until that pull request is merged.
 on:
   schedule:
     - cron: '23 5 * * 1' # Mondays, 05:23 UTC
@@ -44,35 +44,15 @@ jobs:
           key: data-raw-${{ github.run_id }}
           restore-keys: data-raw-
 
-      - name: Refresh data and run the research agent
-        id: update
+      - name: Refresh data, run the research agent and open a pull request
         run: node scripts/update-agent.mjs ${{ github.event_name == 'workflow_dispatch' && !inputs.agent && '--no-agent' || '' }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Pushes the branch and opens the pull request (needs the permissions above).
+          GITHUB_TOKEN: ${{ github.token }}
 
       - uses: actions/cache/save@v4
         if: always()
         with:
           path: data-raw
           key: data-raw-${{ github.run_id }}
-
-      # Pull requests opened with the workflow token don't trigger the Pages build check,
-      # so make sure the site still builds before opening one.
-      - name: Build the site
-        if: steps.update.outputs.changed == 'true'
-        run: npm run build
-
-      - name: Open a pull request
-        if: steps.update.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          day=$(date -u +%Y-%m-%d)
-          branch="data-update/$day-${{ github.run_id }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -c "$branch"
-          git add src/data/generated scripts
-          git commit -m "Data update $day"
-          git push origin "$branch"
-          gh pr create --base main --head "$branch" --title "Data update $day" --body-file data-raw/update-report.md

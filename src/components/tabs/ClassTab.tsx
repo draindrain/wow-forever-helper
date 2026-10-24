@@ -5,7 +5,7 @@ import type { Spell } from '../../types';
 import { FitList } from '../FitList';
 import { EventRow, SpellRow } from '../rows';
 import { Badge, Icon, Panel, stackShare, Tooltip } from '../ui';
-import { NewAtLevel } from './OverviewTab';
+import { NewAtLevel, newAtLevelMinHeight } from './OverviewTab';
 import type { TabProps } from './types';
 
 const LOOKAHEAD = 12;
@@ -178,8 +178,7 @@ export function ClassTab({ ctx, cls }: TabProps) {
       <div className="stack">
         <div
           className="stack-item"
-          // Never smaller than its title, stats and one row (plus the past-30 notice).
-          style={stackShare(Math.max(newCount, 1) + 3, ctx.character.level > 30 ? 200 : 170)}
+          style={stackShare(Math.max(newCount, 1) + 3, newAtLevelMinHeight(newCount, ctx.character.level))}
         >
           <NewAtLevel ctx={ctx} />
         </div>

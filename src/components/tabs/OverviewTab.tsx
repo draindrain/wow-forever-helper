@@ -41,6 +41,15 @@ export function BetaNotice({ level }: { level: number }) {
   );
 }
 
+/**
+ * Height "New at level" needs to show its rows (up to six) under its title and stats,
+ * for sizing it when it shares a column.
+ */
+export function newAtLevelMinHeight(rows: number, level: number) {
+  const ROW = 54;
+  return 104 + (level > BETA_LEVEL_CAP ? 40 : 0) + Math.min(Math.max(rows, 1), 6) * ROW + (rows > 6 ? 24 : 0);
+}
+
 export function NewAtLevel({ ctx, onTab }: { ctx: EventContext; onTab?: (tab: TabId) => void }) {
   const level = ctx.character.level;
   const events = sortEvents(eventsAt(ctx, level), ctx);
@@ -87,7 +96,7 @@ export function OverviewTab({ ctx, character, race, onSkill, onTab }: TabProps) 
     <div className="tab-grid tab-overview">
       <div className="stack">
         {/* Split the column by how many rows each panel has; "new" always keeps room for one row. */}
-        <div className="stack-item" style={stackShare(Math.max(newCount, 1) + 3, level > 30 ? 200 : 170)}>
+        <div className="stack-item" style={stackShare(Math.max(newCount, 1) + 3, newAtLevelMinHeight(newCount, level))}>
           {ctx ? <NewAtLevel ctx={ctx} onTab={onTab} /> : <Panel title="New at level">Loading…</Panel>}
         </div>
         <div className="stack-item" style={stackShare(Math.max(dungeonList.length, 1) + 2)}>

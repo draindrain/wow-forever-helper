@@ -1,6 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { BETA_LEVEL_CAP, meta } from '../data';
 
+declare global {
+  interface Window {
+    /** Set by drnz.se/analytics.js (loaded in index.html) once it runs on a drnz.se host. */
+    drnzConsent?: { get: () => 'granted' | 'denied' | null; ask: () => void; set: (value: string) => void };
+  }
+}
+
 export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -27,6 +34,25 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
         <p>
           A second-screen cheat sheet for World of Warcraft: Forever. Everything fits on one 1080p screen; the tabs hold
           the details. Your characters are saved in this browser only.
+        </p>
+        <p>
+          Visits are counted with Google Analytics, but only if you accept the cookie notice.{' '}
+          {window.drnzConsent && (
+            <>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  onClose();
+                  window.drnzConsent?.ask();
+                }}
+              >
+                Change your answer
+              </button>{' '}
+              ·{' '}
+            </>
+          )}
+          <a href="https://drnz.se/cookies/">Cookie details</a>
         </p>
         <h4>Shortcuts</h4>
         <p>

@@ -1,0 +1,16 @@
+{
+  "name": "WoW Forever Helper",
+  "short_name": "Forever Helper",
+  "description": "Second-screen leveling cheat sheet for World of Warcraft: Forever.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0b0906",
+  "theme_color": "#0b0906",
+  "icons": [
+    { "src": "favicon.svg", "type": "image/svg+xml", "sizes": "any" },
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512" },
+    { "src": "icon-maskable-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ]
+}

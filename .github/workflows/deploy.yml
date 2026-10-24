@@ -30,6 +30,8 @@ jobs:
 
       - run: npm ci
 
+      - run: npm run format:check
+
       - name: Configure Pages
         id: pages
         if: github.event_name != 'pull_request'
@@ -40,6 +42,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          SITE_URL: ${{ steps.pages.outputs.base_url }}
           BASE_PATH: ${{ github.event_name == 'pull_request' && format('/{0}/', github.event.repository.name) || format('{0}/', steps.pages.outputs.base_path) }}
 
       - name: Upload site

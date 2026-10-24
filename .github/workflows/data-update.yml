@@ -3,6 +3,10 @@ name: Data update
 # Weekly: refresh the data, let the research agent check for news and fix curated facts;
 # when anything changed, the script builds the site and opens a pull request with the
 # changes and the agent's report. Nothing reaches the site until that pull request is merged.
+#
+# The weekly run is off until the repository variable DATA_UPDATE_ENABLED is set to true
+# (Settings > Secrets and variables > Actions > Variables); see the README for the setup.
+# Starting it by hand from the Actions tab works either way.
 on:
   schedule:
     - cron: '23 5 * * 1' # Mondays, 05:23 UTC
@@ -23,6 +27,7 @@ concurrency:
 
 jobs:
   update:
+    if: github.event_name == 'workflow_dispatch' || vars.DATA_UPDATE_ENABLED == 'true'
     runs-on: ubuntu-latest
     # The first run (no cache yet) renders ~3,000 Wowhead quest pages, about an hour.
     timeout-minutes: 300

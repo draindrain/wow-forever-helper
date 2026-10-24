@@ -114,7 +114,8 @@ opens a pull request:
   it and opens a pull request with the report as its description, so you review and merge it like any other
   change. Nothing reaches the site before that. If nothing changed, there's no pull request.
 
-`.github/workflows/data-update.yml` runs it every Monday, or from the **Actions** tab. Setup:
+`.github/workflows/data-update.yml` runs it every Monday once it's turned on, or whenever you start it from the
+**Actions** tab (**Data update → Run workflow**). Setup:
 
 1. Install [Claude Code](https://code.claude.com/docs/en/setup) on your computer, log in with your Claude Pro
    or Max account, and run `claude setup-token`. It prints a token that lets Claude Code use your subscription
@@ -123,6 +124,10 @@ opens a pull request:
    variables → Actions → New repository secret**. Don't commit it to a file.
 3. In **Settings → Actions → General**, under *Workflow permissions*, tick **Allow GitHub Actions to create and
    approve pull requests** so the workflow can open its pull request.
+4. Start a run by hand from the **Actions** tab to check that it works.
+5. Turn on the weekly run: under **Settings → Secrets and variables → Actions → Variables**, add a repository
+   variable named **`DATA_UPDATE_ENABLED`** with the value `true`. Until then the Monday run is skipped. To turn
+   it off again, delete the variable or set it to `false`.
 
 The agent's runs count against your subscription's usage limits, the same as using Claude yourself; a weekly
 run takes a few minutes of Claude Sonnet. Renew the secret when the token expires after a year.

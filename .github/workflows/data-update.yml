@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       agent:
-        description: Run the research agent (needs the ANTHROPIC_API_KEY secret)
+        description: Run the research agent (needs the CLAUDE_CODE_OAUTH_TOKEN secret)
         type: boolean
         default: true
 
@@ -36,6 +36,10 @@ jobs:
 
       - run: npm ci
 
+      # The research agent is Claude Code, running on your Claude subscription.
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
       # data-raw/ holds the downloads; keeping it between runs means only new quest pages
       # and item tooltips are fetched each week.
       - uses: actions/cache/restore@v4
@@ -47,7 +51,8 @@ jobs:
       - name: Refresh data, run the research agent and open a pull request
         run: node scripts/update-agent.mjs ${{ github.event_name == 'workflow_dispatch' && !inputs.agent && '--no-agent' || '' }}
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # From `claude setup-token` (Pro or Max); runs count against that subscription's limits.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Pushes the branch and opens the pull request (needs the permissions above).
           GITHUB_TOKEN: ${{ github.token }}
 

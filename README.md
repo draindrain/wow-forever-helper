@@ -94,39 +94,45 @@ When a new Forever build lands (or after launch):
 
 ### Weekly updates with the research agent
 
-`npm run data:update` (`scripts/update-agent.mjs`) does the refresh above and then asks a Claude Sonnet agent
-to review it:
+`npm run data:update` (`scripts/update-agent.mjs`) does the refresh above, has a Claude agent review it, and
+opens a pull request:
 
 - It bumps `WAGO_BUILD` when wago.tools has a newer Forever client build, re-downloads the listing pages
   (wowforevertalents, wago tables, Wowhead zones), fetches only quest pages and item tooltips that are new, and
   rebuilds the data.
 - It diffs the generated data before and after: spells, racials, recipes, zones, dungeons, raids, quests,
   milestones and profession ranks that were added, removed or changed.
-- The agent reads that diff and `scripts/curated.mjs`, searches Blizzard's news and forums, warcraft.wiki.gg,
-  Wowhead and a few other sites for Forever announcements, and fixes curated facts that a page it read confirms.
-  Every edit must cite its sources and is undone if the file stops loading; it never touches the boss-pin settings.
-- It writes `data-raw/update-report.md`: the agent's summary, the data changes, the edits with their sources,
-  and anything that needs a person (suspected scraping problems, unconfirmed news).
+- The agent is [Claude Code](https://code.claude.com) running Claude Sonnet on your Claude subscription. It
+  reads that diff and `scripts/curated.mjs`, searches the web and reads Blizzard's news and forums,
+  warcraft.wiki.gg, Wowhead and a few other sites for Forever announcements, and fixes curated facts that a page
+  it read confirms. It may only search, read the repository and edit `scripts/curated.mjs`: other sites, files
+  and commands are blocked, the file must still load afterwards, and it's told to leave the boss-pin settings
+  alone.
+- It writes `data-raw/update-report.md`: the agent's summary, the data changes, the agent's edits, and anything
+  that needs a person (suspected scraping problems, unconfirmed news).
 - When anything changed, it builds the site, commits the changes to a new `data-update/<date>` branch, pushes
   it and opens a pull request with the report as its description, so you review and merge it like any other
   change. Nothing reaches the site before that. If nothing changed, there's no pull request.
 
-`.github/workflows/data-update.yml` runs it every Monday, or from the **Actions** tab.
+`.github/workflows/data-update.yml` runs it every Monday, or from the **Actions** tab. Setup:
 
-Setup:
-
-1. Add your Anthropic API key as a repository secret named **`ANTHROPIC_API_KEY`**: **Settings → Secrets and
+1. Install [Claude Code](https://code.claude.com/docs/en/setup) on your computer, log in with your Claude Pro
+   or Max account, and run `claude setup-token`. It prints a token that lets Claude Code use your subscription
+   for a year.
+2. Add that token as a repository secret named **`CLAUDE_CODE_OAUTH_TOKEN`**: **Settings → Secrets and
    variables → Actions → New repository secret**. Don't commit it to a file.
-2. In **Settings → Actions → General**, under *Workflow permissions*, tick **Allow GitHub Actions to create and
+3. In **Settings → Actions → General**, under *Workflow permissions*, tick **Allow GitHub Actions to create and
    approve pull requests** so the workflow can open its pull request.
 
-To run it locally, put `ANTHROPIC_API_KEY=...` in a `.env` file in the repository root (git-ignored), check out
-an up-to-date `main` and run `npm run data:update`. Opening the pull request needs a GitHub login: `gh auth login`,
-or a `GITHUB_TOKEN=...` line in `.env` (a token that can push and open pull requests on this repository). Add
+The agent's runs count against your subscription's usage limits, the same as using Claude yourself; a weekly
+run takes a few minutes of Claude Sonnet. Renew the secret when the token expires after a year.
+
+To run it locally, install Claude Code and log in, check out an up-to-date `main` and run `npm run data:update`.
+Opening the pull request needs a GitHub login: `gh auth login`, or a `GITHUB_TOKEN=...` line in a `.env` file in
+the repository root (git-ignored; a token that can push and open pull requests on this repository). Add
 `-- --no-pr` to leave the changes in your working tree instead, `-- --no-agent` to skip the agent, or
-`-- --skip-fetch` to rerun the agent on the data you already have. A run costs roughly a dollar or two in API
-usage (Claude Sonnet, plus up to 15 web searches); the script prints an estimate. Changes to quests that already
-exist aren't re-fetched weekly; run `npm run data:fetch -- --only=quests --force` now and then for a full refresh.
+`-- --skip-fetch` to rerun the agent on the data you already have. Changes to quests that already exist aren't
+re-fetched weekly; run `npm run data:fetch -- --only=quests --force` now and then for a full refresh.
 
 ## Deployment
 

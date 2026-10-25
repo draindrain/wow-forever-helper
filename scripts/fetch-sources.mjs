@@ -259,8 +259,13 @@ async function fetchQuests() {
     );
   }
 
-  // Each pass gets a fresh browser; stop when everything is in or a pass gets nothing.
-  for (let pass = 0, before = -1; pass < 60 && done !== before; pass++) {
+  // Each pass gets a fresh browser; stop when everything is in or a few passes in a row get
+  // nothing (the WAF sometimes turns a whole pass away, and lets the next one through).
+  for (let pass = 0, before = -1, idle = 0; pass < 80 && idle < 4; pass++) {
+    if (done === before) {
+      idle++;
+      await sleep(60000);
+    } else idle = 0;
     before = done;
     const todo = [];
     for (const id of ids) if ((force && pass === 0) || !(await exists(path.join(dir, `${id}.json`)))) todo.push(id);

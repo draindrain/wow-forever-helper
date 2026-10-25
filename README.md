@@ -18,8 +18,9 @@ the details:
 - **Class skills**: new and upcoming trainer spells, your spellbook with one column per talent tree (your
   spec's first), plus racials, class quests, talent milestones (dual spec at 40, spec talents) and gear unlocks.
 - **Quests & dungeons**: zones for your faction around your level with how many quests sit at your level, the
-  herbs and veins you can gather there, and the next zones coming up; dungeons in range with entry level and
-  bosses; later dungeons; battlegrounds and raids.
+  herbs and veins you can gather there, and the next zones coming up; your faction's capital cities with how
+  many of their quests are at your level (Overview lists a city only when it has some); dungeons in range
+  with entry level and bosses; later dungeons; battlegrounds and raids.
 - **Trade skills**: one column per profession. Track your skill, see when the next rank unlocks, the recipes
   that give skill-ups now and what unlocks soon. Mining and Herbalism also list the nodes you can gather and
   where; Skinning shows the highest level you can skin.

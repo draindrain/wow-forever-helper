@@ -177,6 +177,28 @@ export function upcomingZones(zones: Zone[], race: Race, level: number, ahead = 
   return out.sort((a, b) => a.min - b.min || a.max - b.max);
 }
 
+export interface CitySuggestion {
+  city: Zone;
+  /** Quests that still give you XP and aren't far above you (orange, yellow or green). */
+  quests: number;
+}
+
+/** Your faction's capital cities, the ones with the most quests at your level first. */
+export function cityQuests(cities: Zone[], race: Race, level: number): CitySuggestion[] {
+  const out: CitySuggestion[] = [];
+  for (const city of cities) {
+    const range = city.factions[race.faction];
+    if (!range || !zoneCanVisit(city, race)) continue;
+    let quests = 0;
+    for (const [lvl, count] of Object.entries(range.histogram)) {
+      const color = levelColor(Number(lvl), level);
+      if (color === 'orange' || color === 'yellow' || color === 'green') quests += count;
+    }
+    out.push({ city, quests });
+  }
+  return out.sort((a, b) => b.quests - a.quests || a.city.name.localeCompare(b.city.name));
+}
+
 // ---------------------------------------------------------------- dungeons
 
 export type DungeonFit = 'locked' | 'hard' | 'ideal' | 'easy' | 'grey';

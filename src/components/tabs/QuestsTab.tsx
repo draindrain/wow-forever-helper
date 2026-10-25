@@ -1,7 +1,7 @@
-import { instances, MAX_LEVEL, zones } from '../../data';
-import { dungeonsFor, suggestZones, upcomingZones } from '../../lib/game';
+import { cities, instances, MAX_LEVEL, zones } from '../../data';
+import { cityQuests, dungeonsFor, suggestZones, upcomingZones } from '../../lib/game';
 import { FitList } from '../FitList';
-import { DungeonRow, ZoneRow } from '../rows';
+import { CityRow, DungeonRow, ZoneRow } from '../rows';
 import { clickable, useModal } from '../modals/ModalContext';
 import { Panel, StatusMark } from '../ui';
 import type { TabProps } from './types';
@@ -14,6 +14,7 @@ export function QuestsTab({ character, race }: TabProps) {
   const dungeonList = dungeonsFor(forFaction, race.faction, level);
   const later = forFaction.filter((d) => d.min > level + 3).sort((a, b) => a.min - b.min);
   const battlegrounds = instances.battlegrounds;
+  const cityList = cityQuests(cities, race, level);
   const { openDungeon } = useModal();
 
   return (
@@ -58,6 +59,16 @@ export function QuestsTab({ character, race }: TabProps) {
       </Panel>
 
       <div className="stack">
+        {cityList.length > 0 && (
+          <Panel title="Capital cities" icon="inv_misc_map_01" className="city-panel">
+            <ul className="mini-list city-list">
+              {cityList.map((s) => (
+                <CityRow key={s.city.id} s={s} />
+              ))}
+            </ul>
+            <p className="source small muted">Quests filed under the city, at your level; many send you elsewhere.</p>
+          </Panel>
+        )}
         <Panel title="Later dungeons" icon="inv_misc_map_01" className="grow-3">
           <FitList className="mini-list">
             {later.map((d) => (

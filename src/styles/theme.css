@@ -741,6 +741,9 @@ kbd {
 .mini-row .muted { font-size: 0.78rem; }
 .mini-row b { color: var(--gold); font-family: var(--font-display); }
 .mini-row.is-future { opacity: 0.6; }
+.city-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+/* A few rows: takes its own height, the panels below share the rest */
+.stack > .city-panel { flex: none; }
 
 /* ------------------------------------------------------------ professions */
 

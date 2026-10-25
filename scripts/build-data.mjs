@@ -387,6 +387,54 @@ async function buildZones(races) {
   return result;
 }
 
+/**
+ * Capital cities aren't leveling zones, but the quests filed under them (many send you
+ * elsewhere) get a quest view and a row of their own. Ranges span all their quests.
+ */
+async function buildCities() {
+  const list = JSON.parse(extractJsonScript(await readText(raw('wowhead', 'zones.html')), 'data.page.listPage.listviews'))[0]
+    .data;
+  const byId = new Map(list.map((z) => [z.id, z]));
+  const cities = [];
+  for (const id of CITY_ZONE_IDS) {
+    const meta = byId.get(id);
+    const file = raw('wowhead', `zone-${id}.html`);
+    if (!meta || !(await fileExists(file))) continue;
+    const quests = (listviews(await readText(file)).quests ?? []).filter(
+      (q) => q.category === id && q.level > 0 && !NOT_A_QUEST.test(q.name),
+    );
+    const factions = {};
+    for (const [faction, side] of [['Alliance', 1], ['Horde', 2]]) {
+      const enemyTerritory = meta.territory === (side === 1 ? 1 : 0);
+      if (enemyTerritory && !quests.some((q) => q.side === side)) continue;
+      const levels = quests
+        .filter((q) => q.side === side || q.side === 3 || q.side === undefined)
+        .map((q) => q.level)
+        .sort((a, b) => a - b);
+      if (!levels.length) continue;
+      const histogram = {};
+      for (const l of levels) histogram[l] = (histogram[l] ?? 0) + 1;
+      factions[faction] = { min: levels[0], max: levels.at(-1), quests: levels.length, histogram };
+    }
+    if (!Object.keys(factions).length) continue;
+    cities.push({
+      id,
+      name: meta.name,
+      continent: CONTINENTS[meta.category] ?? 'Other',
+      territory: TERRITORY[meta.territory] ?? 'Contested',
+      isNew: meta.envChange?.status === 'new' || undefined,
+      factions,
+      nodes: [],
+    });
+  }
+  await writeJson('cities.json', cities);
+  for (const c of cities) {
+    const f = Object.entries(c.factions).map(([k, v]) => `${k[0]} ${v.quests}q`).join(', ');
+    console.log(`city ${c.name}: ${f}`);
+  }
+  return cities;
+}
+
 // ---------------------------------------------------------------- quests
 
 const SIDES = { 1: 'Alliance', 2: 'Horde' };
@@ -526,6 +574,7 @@ async function loadBossMaps() {
   };
 }
 
+/** Writes quest bundles for `zoneList` (zones and cities), each class, and dungeons and raids. */
 async function buildQuests(zoneList, dungeons) {
   const records = await loadQuestRecords();
   if (!records.size) {
@@ -595,7 +644,8 @@ const professions = [];
 for (const p of PROFESSIONS) professions.push(await buildProfession(p));
 const dungeons = await buildInstances();
 const zoneList = await buildZones(races);
-await buildQuests(zoneList, dungeons);
+const cityList = await buildCities();
+await buildQuests([...zoneList, ...cityList], dungeons);
 await writeJson('meta.json', {
   clientBuild: WAGO_BUILD,
   generatedAt: new Date().toISOString().slice(0, 10),

@@ -1,9 +1,9 @@
-import { BETA_LEVEL_CAP, instances, MAX_LEVEL, zones } from '../../data';
+import { BETA_LEVEL_CAP, cities, instances, MAX_LEVEL, zones } from '../../data';
 import { eventsAt, nextTrainingLevel, type EventContext } from '../../lib/events';
-import { dungeonsFor, suggestZones, upcomingZones } from '../../lib/game';
+import { cityQuests, dungeonsFor, suggestZones, upcomingZones } from '../../lib/game';
 import { FitList } from '../FitList';
 import { ProfessionSummary } from '../ProfessionCard';
-import { DungeonRow, EventRow, sortEvents, ZoneRow } from '../rows';
+import { CityRow, DungeonRow, EventRow, sortEvents, ZoneRow } from '../rows';
 import { Panel, stackShare } from '../ui';
 import type { TabId, TabProps } from './types';
 
@@ -72,6 +72,8 @@ export function OverviewTab({ ctx, character, race, onSkill, onTab }: TabProps) 
   const level = character.level;
   const zoneList = suggestZones(zones, race, level);
   const nextZones = upcomingZones(zones, race, level);
+  // Cities only when they have quests at your level.
+  const cityList = cityQuests(cities, race, level).filter((s) => s.quests > 0);
   const newCount = ctx ? eventsAt(ctx, level).length : 3;
   const dungeonList = dungeonsFor(instances.dungeons, race.faction, level);
   const nextDungeon = instances.dungeons
@@ -137,6 +139,14 @@ export function OverviewTab({ ctx, character, race, onSkill, onTab }: TabProps) 
           ) : (
             <li className="empty">No zones found for this level yet.</li>
           )}
+          {cityList.length > 0 && (
+            <li className="coming-heading" data-fit-heading>
+              Capital cities
+            </li>
+          )}
+          {cityList.map((s) => (
+            <CityRow key={s.city.id} s={s} />
+          ))}
           {nextZones.length > 0 && (
             <li className="coming-heading" data-fit-heading>
               Next zones

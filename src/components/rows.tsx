@@ -4,6 +4,7 @@ import {
   learnSkill,
   recipeColor,
   talentState,
+  type CitySuggestion,
   type DungeonFit,
   type ZoneFit,
   type ZoneSuggestion,
@@ -292,6 +293,23 @@ export function ZoneRow({ s, character, compact }: { s: ZoneSuggestion; characte
           })}
         </div>
       )}
+    </li>
+  );
+}
+
+export function CityRow({ s }: { s: CitySuggestion }) {
+  const { openZone } = useModal();
+  return (
+    <li
+      className={`mini-row is-clickable ${s.quests ? '' : 'is-future'}`}
+      {...clickable(() => openZone(s.city.id), `${s.city.name}: quests and map`)}
+    >
+      <span>
+        {s.city.name}
+        {s.city.isNew && <StatusMark status="new" />}
+      </span>
+      <span className="muted">{s.city.continent}</span>
+      <b>{s.quests ? `${s.quests} quest${s.quests === 1 ? '' : 's'}` : 'None now'}</b>
     </li>
   );
 }

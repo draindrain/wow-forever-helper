@@ -4,6 +4,7 @@ import { levelColor, type Difficulty } from '../../lib/game';
 import type { Quest } from '../../types';
 import { Tooltip } from '../ui';
 import type { HoverProps } from './QuestViews';
+import { ZoomableMap } from './ZoomableMap';
 
 interface Pin {
   key: string;
@@ -47,8 +48,8 @@ export function QuestMap({
   const pins = pinsFor(quests, zoneId);
   return (
     <>
-      <div className="quest-map">
-        <img src={mapUrl(zoneId)} alt="" onError={() => setFailed(true)} />
+      <ZoomableMap key={zoneId}>
+        <img src={mapUrl(zoneId)} alt="" draggable={false} onError={() => setFailed(true)} />
         {pins.map((pin) => {
           // The pin takes the colour of its most worthwhile quest, as the game's "!" does.
           const colors = pin.quests.map((q) => levelColor(q.level, level));
@@ -83,7 +84,7 @@ export function QuestMap({
             </span>
           );
         })}
-      </div>
+      </ZoomableMap>
       <div className="map-legend small">
         <span>
           <span className="pin pin-start pin-yellow">!</span> Pick up
@@ -91,7 +92,9 @@ export function QuestMap({
         <span>
           <span className="pin pin-end pin-yellow">?</span> Turn in
         </span>
-        <span className="muted">Colour shows the quest's difficulty for you. Hover a quest to find it.</span>
+        <span className="muted">
+          Colour shows the quest's difficulty for you. Hover a quest to find it; scroll or pinch to zoom, drag to pan.
+        </span>
       </div>
     </>
   );

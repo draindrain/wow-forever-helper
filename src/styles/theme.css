@@ -993,9 +993,38 @@ kbd {
   box-shadow: 0 0 0 1px #000, inset 0 0 30px rgba(0, 0, 0, 0.8);
 }
 .quest-map img { display: block; width: 100%; height: 100%; object-fit: cover; }
-/* Boss maps zoom in on the drawn part of the image; the layer carries the image and its pins. */
-.quest-map:has(.map-layer) { overflow: hidden; }
+/* Maps zoom and pan; the layer carries the image and its pins, and boss maps start on the drawn part. */
+.quest-map.is-zoomable { overflow: hidden; touch-action: none; user-select: none; }
+.quest-map.is-zoomed { cursor: grab; }
+.quest-map.is-dragging { cursor: grabbing; }
 .map-layer { position: absolute; inset: 0; }
+.map-zoom {
+  position: absolute;
+  z-index: 4;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  opacity: 0.7;
+  transition: opacity 0.12s;
+}
+.quest-map:hover .map-zoom, .map-zoom:focus-within { opacity: 1; }
+.map-zoom button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gold);
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid var(--trim);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.map-zoom button:hover:not(:disabled) { background: rgba(40, 30, 10, 0.9); }
+.map-zoom button:disabled { opacity: 0.4; cursor: default; }
 .pin-wrap { position: absolute; z-index: 1; transform: translate(-50%, -55%); line-height: 1; }
 .pin-wrap.is-hot { z-index: 3; }
 .pin-wrap .tip-anchor { cursor: pointer; }

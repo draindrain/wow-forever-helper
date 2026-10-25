@@ -5,7 +5,7 @@ import { readFile, writeFile, mkdir, readdir, rm, access } from 'node:fs/promise
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'node-html-parser';
-import { WAGO_BUILD, CLASSES, PROFESSIONS, NOT_A_QUEST } from './sources.mjs';
+import { WAGO_BUILD, CLASSES, PROFESSIONS, NOT_A_QUEST, CITY_ZONE_IDS, isClassQuestCategory } from './sources.mjs';
 import {
   SPECS,
   RACES,
@@ -296,10 +296,10 @@ async function buildZones(races) {
   const list = JSON.parse(extractJsonScript(await readText(raw('wowhead', 'zones.html')), 'data.page.listPage.listviews'))[0]
     .data;
   const byId = new Map(list.map((z) => [z.id, z]));
-  // Dungeon and raid pages are fetched for their quests; they aren't leveling zones.
-  const instanceIds = new Set(Object.values(INSTANCE_ZONES).flat());
+  // Dungeon, raid and capital city pages are fetched for their quests; they aren't leveling zones.
+  const skip = new Set([...Object.values(INSTANCE_ZONES).flat(), ...CITY_ZONE_IDS]);
   const files = (await readdir(raw('wowhead'))).filter(
-    (f) => /^zone-\d+\.html$/.test(f) && !instanceIds.has(Number(/\d+/.exec(f)[0])),
+    (f) => /^zone-\d+\.html$/.test(f) && !skip.has(Number(/\d+/.exec(f)[0])),
   );
   const zones = [];
   for (const file of files) {
@@ -387,6 +387,54 @@ async function buildZones(races) {
   return result;
 }
 
+/**
+ * Capital cities aren't leveling zones, but the quests filed under them (many send you
+ * elsewhere) get a quest view and a row of their own. Ranges span all their quests.
+ */
+async function buildCities() {
+  const list = JSON.parse(extractJsonScript(await readText(raw('wowhead', 'zones.html')), 'data.page.listPage.listviews'))[0]
+    .data;
+  const byId = new Map(list.map((z) => [z.id, z]));
+  const cities = [];
+  for (const id of CITY_ZONE_IDS) {
+    const meta = byId.get(id);
+    const file = raw('wowhead', `zone-${id}.html`);
+    if (!meta || !(await fileExists(file))) continue;
+    const quests = (listviews(await readText(file)).quests ?? []).filter(
+      (q) => q.category === id && q.level > 0 && !NOT_A_QUEST.test(q.name),
+    );
+    const factions = {};
+    for (const [faction, side] of [['Alliance', 1], ['Horde', 2]]) {
+      const enemyTerritory = meta.territory === (side === 1 ? 1 : 0);
+      if (enemyTerritory && !quests.some((q) => q.side === side)) continue;
+      const levels = quests
+        .filter((q) => q.side === side || q.side === 3 || q.side === undefined)
+        .map((q) => q.level)
+        .sort((a, b) => a - b);
+      if (!levels.length) continue;
+      const histogram = {};
+      for (const l of levels) histogram[l] = (histogram[l] ?? 0) + 1;
+      factions[faction] = { min: levels[0], max: levels.at(-1), quests: levels.length, histogram };
+    }
+    if (!Object.keys(factions).length) continue;
+    cities.push({
+      id,
+      name: meta.name,
+      continent: CONTINENTS[meta.category] ?? 'Other',
+      territory: TERRITORY[meta.territory] ?? 'Contested',
+      isNew: meta.envChange?.status === 'new' || undefined,
+      factions,
+      nodes: [],
+    });
+  }
+  await writeJson('cities.json', cities);
+  for (const c of cities) {
+    const f = Object.entries(c.factions).map(([k, v]) => `${k[0]} ${v.quests}q`).join(', ');
+    console.log(`city ${c.name}: ${f}`);
+  }
+  return cities;
+}
+
 // ---------------------------------------------------------------- quests
 
 const SIDES = { 1: 'Alliance', 2: 'Horde' };
@@ -416,6 +464,18 @@ async function zoneQuestRows(zoneId) {
   return (listviews(await readText(file)).quests ?? []).filter(
     (q) => q.category === zoneId && q.level > 0 && !NOT_A_QUEST.test(q.name),
   );
+}
+
+/** Ids of the quests any fetched page files under a class (see CLASS_QUEST_CATEGORIES). */
+async function classCategoryQuestIds() {
+  const ids = new Set();
+  for (const file of await readdir(raw('wowhead'))) {
+    if (!/^zone-\d+\.html$/.test(file)) continue;
+    for (const q of listviews(await readText(raw('wowhead', file))).quests ?? []) {
+      if (isClassQuestCategory(q.category)) ids.add(q.id);
+    }
+  }
+  return ids;
 }
 
 // Wowhead lists instance NPCs with an empty position ([""]).
@@ -514,6 +574,7 @@ async function loadBossMaps() {
   };
 }
 
+/** Writes quest bundles for `zoneList` (zones and cities), each class, and dungeons and raids. */
 async function buildQuests(zoneList, dungeons) {
   const records = await loadQuestRecords();
   if (!records.size) {
@@ -525,9 +586,26 @@ async function buildQuests(zoneList, dungeons) {
     classes: new Map(chrClasses.map((r) => [Number(r.ID), r.Name_lang.toLowerCase()])),
     races: new Map(RACES.map((r) => [r.clientId, r.id])),
   };
+  // Class and race quests: Wowhead files class quests under the class, so each joins the
+  // zone it starts in, and every class gets a bundle of its own quests for level events.
+  const restricted = [...records.values()].filter((q) => q.level > 0 && (q.classes?.length || q.races?.length));
   for (const zone of zoneList) {
-    const bundle = await questBundle(await zoneQuestRows(zone.id), records, zone.id);
+    const startsHere = restricted.filter((q) => giverOut(q, 'start', zone.id)?.zone === zone.id).map((q) => q.id);
+    const bundle = await questBundle(await zoneQuestRows(zone.id), records, zone.id, startsHere);
     await writeJson(`quests/zone-${zone.id}.json`, { mapZone: zone.id, ...bundle });
+  }
+  // A class quest is filed under a class, or limited to one or two classes (Forever's new ones
+  // file under their zone). Profession and armor quests list more classes and don't count.
+  const classCategory = await classCategoryQuestIds();
+  const isClassQuest = (q) => classCategory.has(q.id) || q.classes?.length <= 2;
+  for (const [clientId, classId] of questIds.classes) {
+    if (!CLASSES.includes(classId)) continue;
+    const ids = restricted
+      .filter((q) => q.classes?.includes(clientId) && isClassQuest(q) && !NOT_A_QUEST.test(q.name))
+      .map((q) => q.id);
+    const bundle = await questBundle([], records, undefined, ids);
+    await writeJson(`quests/class-${classId}.json`, bundle);
+    console.log(`class quests ${classId}: ${bundle.quests.length}`);
   }
   const pinsFor = await loadBossMaps();
   for (const d of [...dungeons, ...RAIDS]) {
@@ -566,7 +644,8 @@ const professions = [];
 for (const p of PROFESSIONS) professions.push(await buildProfession(p));
 const dungeons = await buildInstances();
 const zoneList = await buildZones(races);
-await buildQuests(zoneList, dungeons);
+const cityList = await buildCities();
+await buildQuests([...zoneList, ...cityList], dungeons);
 await writeJson('meta.json', {
   clientBuild: WAGO_BUILD,
   generatedAt: new Date().toISOString().slice(0, 10),

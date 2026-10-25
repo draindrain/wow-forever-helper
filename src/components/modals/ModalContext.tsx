@@ -1,13 +1,20 @@
 import { createContext, useContext } from 'react';
 
-export type ModalTarget = { kind: 'zone'; id: number } | { kind: 'dungeon'; id: string } | null;
+export type ModalTarget =
+  { kind: 'zone'; id: number } | { kind: 'dungeon'; id: string } | { kind: 'classQuest'; id: number } | null;
 
 export interface ModalApi {
   openZone: (zoneId: number) => void;
   openDungeon: (dungeonId: string) => void;
+  /** A class quest (and its chain), by quest id. */
+  openClassQuest: (questId: number) => void;
 }
 
-export const ModalContext = createContext<ModalApi>({ openZone: () => {}, openDungeon: () => {} });
+export const ModalContext = createContext<ModalApi>({
+  openZone: () => {},
+  openDungeon: () => {},
+  openClassQuest: () => {},
+});
 
 export const useModal = () => useContext(ModalContext);
 

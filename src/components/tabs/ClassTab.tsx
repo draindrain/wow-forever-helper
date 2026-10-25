@@ -1,7 +1,17 @@
 import { MAX_LEVEL } from '../../data';
 import { eventsAt, type EventContext } from '../../lib/events';
-import { learnableSpells, ranksAt, specTalentSpells, spellbook, talentState } from '../../lib/game';
-import type { Spell } from '../../types';
+import {
+  classQuestStarts,
+  learnableSpells,
+  levelColor,
+  questUnlockLevel,
+  ranksAt,
+  specTalentSpells,
+  spellbook,
+  talentState,
+} from '../../lib/game';
+import type { Quest, Spell } from '../../types';
+import { clickable, useModal } from '../modals/ModalContext';
 import { FitList } from '../FitList';
 import { EventRow, GearTip, SpellRow } from '../rows';
 import { SpellTip } from '../SpellTip';
@@ -74,7 +84,44 @@ function trainingRows(ctx: EventContext) {
   return rows;
 }
 
-/** Racials, spellbook schools that aren't talent trees, talents and gear. */
+function ClassQuestRow({ quest, ctx }: { quest: Quest; ctx: EventContext }) {
+  const { openClassQuest } = useModal();
+  const level = ctx.character.level;
+  const unlock = questUnlockLevel(quest);
+  return (
+    <li
+      className={`spell is-clickable ${unlock > level ? 'is-future' : ''}`}
+      {...clickable(() => openClassQuest(quest.id), `${quest.name}: class quest`)}
+    >
+      <Icon icon={`classicon_${ctx.character.classId}`} size={30} />
+      <div className="spell-text">
+        <span className="spell-name">{quest.name}</span>
+        <span className="spell-sub clamp-1">
+          {unlock > level ? `From level ${unlock}` : `Level ${quest.level}`}
+          {quest.start?.zoneName && ` · ${quest.start.zoneName}`}
+        </span>
+      </div>
+    </li>
+  );
+}
+
+/** Class quests still worth doing (they give XP) and the ones to come. */
+function classQuestRows(ctx: EventContext) {
+  if (!ctx.classQuests) return [];
+  const level = ctx.character.level;
+  const quests = classQuestStarts(ctx.classQuests, ctx.race, ctx.character.classId).filter(
+    (q) => questUnlockLevel(q) > level || levelColor(q.level, level) !== 'grey',
+  );
+  if (!quests.length) return [];
+  return [
+    <li key="h-class-quests" className="coming-heading" data-fit-heading>
+      Class quests
+    </li>,
+    ...quests.map((q) => <ClassQuestRow key={q.id} quest={q} ctx={ctx} />),
+  ];
+}
+
+/** Racials, class quests, spellbook schools that aren't talent trees, talents and gear. */
 function MorePanel({ ctx, extraSchools }: { ctx: EventContext; extraSchools: { school: string; spells: Spell[] }[] }) {
   const level = ctx.character.level;
   const talents = specTalentSpells(learnableSpells(ctx.classData, ctx.race, ctx.race.faction), ctx.spec);
@@ -110,6 +157,7 @@ function MorePanel({ ctx, extraSchools }: { ctx: EventContext; extraSchools: { s
             </div>
           </Tooltip>
         ))}
+        {classQuestRows(ctx)}
         {extraSchools.flatMap(({ school, spells }) => [
           <li key={`h-${school}`} className="coming-heading" data-fit-heading>
             {school}

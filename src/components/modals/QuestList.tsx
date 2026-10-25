@@ -1,3 +1,4 @@
+import { canTakeQuest } from '../../lib/game';
 import type { ClassMeta, Quest, QuestBundle, Race } from '../../types';
 import { ChainCard, QuestCard, type HoverProps } from './QuestViews';
 
@@ -58,10 +59,5 @@ export function QuestList({
 
 /** Quests this character can take: their faction's (or both) and, for class or race quests, theirs. */
 export function questsFor(quests: Quest[], race: Race, cls: ClassMeta) {
-  return quests.filter(
-    (q) =>
-      (q.side === 'Both' || q.side === race.faction) &&
-      (!q.classes || q.classes.includes(cls.id)) &&
-      (!q.races || q.races.includes(race.id)),
-  );
+  return quests.filter((q) => canTakeQuest(q, race, cls.id));
 }

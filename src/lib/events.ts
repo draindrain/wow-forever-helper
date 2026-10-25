@@ -7,12 +7,22 @@ import type {
   Milestone,
   ProfessionMeta,
   ProfessionRank,
+  Quest,
+  QuestBundle,
   Race,
   Spec,
   Spell,
 } from '../types';
 import { instances, meta, professionById } from '../data';
-import { learnableSpells, ranksAt, specTalentSpells, talentState, type RankEntry } from './game';
+import {
+  classQuestStarts,
+  learnableSpells,
+  questUnlockLevel,
+  ranksAt,
+  specTalentSpells,
+  talentState,
+  type RankEntry,
+} from './game';
 
 export type LevelEvent =
   | { kind: 'spell'; entry: RankEntry }
@@ -21,13 +31,16 @@ export type LevelEvent =
   | { kind: 'dungeon'; dungeon: Dungeon }
   | { kind: 'battleground'; bg: Battleground }
   | { kind: 'profession'; profession: ProfessionMeta; rank: ProfessionRank }
-  | { kind: 'milestone'; milestone: Milestone };
+  | { kind: 'milestone'; milestone: Milestone }
+  | { kind: 'quest'; quest: Quest };
 
 export interface EventContext {
   character: Character;
   race: Race;
   spec: Spec;
   classData: ClassData;
+  /** The class's quests: undefined while loading, null when this build has none. */
+  classQuests?: QuestBundle | null;
 }
 
 /** Spells you can train: talent-gated ranks only count when the talent is in your spec's tree. */
@@ -61,6 +74,11 @@ export function eventsAt(ctx: EventContext, level: number): LevelEvent[] {
   }
   for (const milestone of meta.milestones) {
     if (milestone.level === level) events.push({ kind: 'milestone', milestone });
+  }
+  if (ctx.classQuests) {
+    for (const quest of classQuestStarts(ctx.classQuests, ctx.race, ctx.character.classId)) {
+      if (questUnlockLevel(quest) === level) events.push({ kind: 'quest', quest });
+    }
   }
   return events;
 }

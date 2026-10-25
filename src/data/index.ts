@@ -1,10 +1,13 @@
 import metaJson from './generated/meta.json';
 import zonesJson from './generated/zones.json';
+import citiesJson from './generated/cities.json';
 import instancesJson from './generated/instances.json';
 import type { ClassData, Instances, Meta, QuestBundle, Recipe, Zone } from '../types';
 
 export const meta = metaJson as Meta;
 export const zones = zonesJson as Zone[];
+/** Capital cities: not leveling zones, but they have quest views of their own. */
+export const cities = citiesJson as Zone[];
 export const instances = instancesJson as Instances;
 
 // Class spellbooks and recipe lists are larger, so each loads on demand.
@@ -58,7 +61,13 @@ export async function loadDungeonQuests(dungeonId: string): Promise<QuestBundle 
   return load ? importChunk(load) : null;
 }
 
-export const zoneById = (id: number) => zones.find((z) => z.id === id);
+/** A class's own quests (Wowhead files them under the class, not a zone) or null if this build has none. */
+export async function loadClassQuests(classId: string): Promise<QuestBundle | null> {
+  const load = questFiles[`./generated/quests/class-${classId}.json`];
+  return load ? importChunk(load) : null;
+}
+
+export const zoneById = (id: number) => zones.find((z) => z.id === id) ?? cities.find((c) => c.id === id);
 
 /** Forever map image for a Wowhead zone id (the coordinates in quest data are percentages of it). */
 export const mapUrl = (zoneId: number) => `https://wow.zamimg.com/images/wow/classicplus/maps/enus/zoom/${zoneId}.jpg`;

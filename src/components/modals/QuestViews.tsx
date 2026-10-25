@@ -1,4 +1,4 @@
-import { classById, zoneById } from '../../data';
+import { classById, raceById, zoneById } from '../../data';
 import { levelColor } from '../../lib/game';
 import type { ChainStep, Quest, QuestBundle, QuestGiver } from '../../types';
 import { Badge, ItemIcon, Money } from '../ui';
@@ -9,6 +9,9 @@ export interface HoverProps {
   hovered?: number;
   onHover?: (questId: number | undefined) => void;
 }
+
+/** Marks class quests (and race-only ones) so they stand out among a zone's quests. */
+export const restrictedClass = (q: Quest) => (q.classes ? 'is-class' : q.races ? 'is-race' : '');
 
 const coordText = (g: QuestGiver) => (g.coord ? `${g.coord[0].toFixed(1)}, ${g.coord[1].toFixed(1)}` : '');
 
@@ -99,7 +102,7 @@ export function QuestCard({
     quest.end && quest.start && quest.end.name === quest.start.name && quest.end.zone === quest.start.zone;
   return (
     <article
-      className={`quest-card d-border-${color} ${hovered === quest.id ? 'is-hovered' : ''}`}
+      className={`quest-card d-border-${color} ${restrictedClass(quest)} ${hovered === quest.id ? 'is-hovered' : ''}`}
       onMouseEnter={() => onHover?.(quest.id)}
       onMouseLeave={() => onHover?.(undefined)}
     >
@@ -114,8 +117,9 @@ export function QuestCard({
         <span className="quest-tags">
           {quest.type && <Badge tone="orange">{quest.type}</Badge>}
           {quest.classes && (
-            <Badge tone="purple">{quest.classes.map((id) => classById(id)?.name ?? id).join(' / ')}</Badge>
+            <Badge tone="class">{quest.classes.map((id) => classById(id)?.name ?? id).join(' / ')}</Badge>
           )}
+          {quest.races && <Badge tone="blue">{quest.races.map((id) => raceById(id)?.name ?? id).join(' / ')}</Badge>}
         </span>
       </header>
       {quest.reqLevel !== undefined && quest.reqLevel > 1 && quest.reqLevel > level && (

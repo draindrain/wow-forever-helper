@@ -27,6 +27,21 @@ export const CITY_ZONE_IDS = [1519, 1537, 1638, 1637, 1657, 1497, 16509];
 // Wowhead lists dev/test maps, seas and transport zones alongside real ones.
 export const ZONE_EXCLUDE = /test|unused|prototype|sea$|waters|tram|crafting|tavern/i;
 
+// Wowhead's quest category for each class's quests. Zone pages list them under these
+// ids rather than the zone's own.
+export const CLASS_QUEST_CATEGORIES = {
+  warrior: -81,
+  paladin: -141,
+  hunter: -261,
+  rogue: -162,
+  priest: -262,
+  shaman: -82,
+  mage: -161,
+  warlock: -61,
+  druid: -263,
+};
+export const isClassQuestCategory = (category) => Object.values(CLASS_QUEST_CATEGORIES).includes(category);
+
 // Placeholder rows (<NYI>, <UNUSED>), Legacy reward pickups and similar aren't leveling quests.
 export const NOT_A_QUEST = /^<|^Legacy Reward/;
 

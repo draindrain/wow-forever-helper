@@ -4,12 +4,13 @@ import {
   learnSkill,
   recipeColor,
   talentState,
+  type CitySuggestion,
   type DungeonFit,
   type ZoneFit,
   type ZoneSuggestion,
 } from '../lib/game';
 import { professionIcon } from '../lib/icons';
-import type { Character, Dungeon, Equipment, Recipe, Spec, Spell, SpellRank } from '../types';
+import type { Character, Dungeon, Equipment, Quest, Recipe, Spec, Spell, SpellRank } from '../types';
 import { clickable, useModal } from './modals/ModalContext';
 import { SpellTip } from './SpellTip';
 import { Badge, Icon, ItemTipView, LevelTrack, StatusMark, Tooltip } from './ui';
@@ -83,6 +84,8 @@ export function EventRow({ event, ctx, compact }: { event: LevelEvent; ctx: Even
       );
     case 'dungeon':
       return <DungeonEvent dungeon={event.dungeon} size={size} />;
+    case 'quest':
+      return <ClassQuestEvent quest={event.quest} ctx={ctx} size={size} />;
     case 'battleground':
       return (
         <li className="event">
@@ -153,6 +156,28 @@ function DungeonEvent({ dungeon, size }: { dungeon: Dungeon; size: number }) {
   );
 }
 
+function ClassQuestEvent({ quest, ctx, size }: { quest: Quest; ctx: EventContext; size: number }) {
+  const { openClassQuest } = useModal();
+  const steps = quest.chain && quest.chain.length > 1 ? quest.chain.length - quest.chain.step + 1 : 0;
+  return (
+    <li
+      className="event is-clickable is-class-quest"
+      {...clickable(() => openClassQuest(quest.id), `${quest.name}: class quest`)}
+    >
+      <Icon icon={`classicon_${ctx.character.classId}`} size={size} />
+      <div className="event-text">
+        <span className="event-title">{quest.name}</span>
+        <span className="event-sub">
+          Level {quest.level}
+          {quest.start?.zoneName && ` · ${quest.start.zoneName}`}
+          {steps > 1 && ` · ${steps} steps`}
+        </span>
+      </div>
+      <Badge tone="class">Class quest</Badge>
+    </li>
+  );
+}
+
 const gearText: Record<string, string> = {
   'Dual Wield': 'Lets you wield a one-handed weapon in your off hand.',
   'Plate Mail': 'Lets you wear plate armor.',
@@ -179,6 +204,7 @@ export function sortEvents(events: LevelEvent[], ctx: EventContext): LevelEvent[
   const weight = (e: LevelEvent) => {
     if (e.kind === 'spell') return e.entry.spell.school === ctx.spec.school ? 0 : e.entry.isNewSpell ? 1 : 2;
     if (e.kind === 'talent') return 0;
+    if (e.kind === 'quest') return 1;
     return 3;
   };
   return [...events].sort((a, b) => weight(a) - weight(b));
@@ -267,6 +293,23 @@ export function ZoneRow({ s, character, compact }: { s: ZoneSuggestion; characte
           })}
         </div>
       )}
+    </li>
+  );
+}
+
+export function CityRow({ s }: { s: CitySuggestion }) {
+  const { openZone } = useModal();
+  return (
+    <li
+      className={`mini-row is-clickable ${s.quests ? '' : 'is-future'}`}
+      {...clickable(() => openZone(s.city.id), `${s.city.name}: quests and map`)}
+    >
+      <span>
+        {s.city.name}
+        {s.city.isNew && <StatusMark status="new" />}
+      </span>
+      <span className="muted">{s.city.continent}</span>
+      <b>{s.quests ? `${s.quests} quest${s.quests === 1 ? '' : 's'}` : 'None now'}</b>
     </li>
   );
 }

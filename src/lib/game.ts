@@ -316,7 +316,8 @@ export const questUnlockLevel = (q: Quest) => q.reqLevel ?? q.level;
 
 /**
  * The class quests this character can start, by the level they unlock: one per chain (its
- * first step they can take) and one per quest name, so the versions for other races collapse.
+ * first step they can take) and one per name and level, since Wowhead keeps a copy of a
+ * quest for each trainer that gives it (the one in your starting zone wins).
  */
 export function classQuestStarts(bundle: QuestBundle, race: Race, classId: string): Quest[] {
   const mine = bundle.quests.filter((q) => q.classes?.includes(classId) && canTakeQuest(q, race, classId));
@@ -324,16 +325,14 @@ export function classQuestStarts(bundle: QuestBundle, race: Race, classId: strin
   for (const q of mine) {
     if (q.chain) firstStep.set(q.chain.id, Math.min(firstStep.get(q.chain.id) ?? Infinity, q.chain.step));
   }
-  const seen = new Set<string>();
-  const out: Quest[] = [];
+  const byName = new Map<string, Quest>();
   for (const q of mine) {
     if (q.chain && q.chain.step !== firstStep.get(q.chain.id)) continue;
-    const key = q.chain ? `chain ${q.chain.id}` : `${q.name} ${questUnlockLevel(q)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(q);
+    const key = `${q.name} ${questUnlockLevel(q)}`;
+    const kept = byName.get(key);
+    if (!kept || (kept.start?.zone !== race.startZone && q.start?.zone === race.startZone)) byName.set(key, q);
   }
-  return out.sort(
+  return [...byName.values()].sort(
     (a, b) => questUnlockLevel(a) - questUnlockLevel(b) || a.level - b.level || a.name.localeCompare(b.name),
   );
 }

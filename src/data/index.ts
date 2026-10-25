@@ -7,7 +7,7 @@ import type { ClassData, Instances, Meta, QuestBundle, Recipe, Zone } from '../t
 export const meta = metaJson as Meta;
 export const zones = zonesJson as Zone[];
 /** Capital cities: not leveling zones, but they have quest views of their own. */
-export const cities = citiesJson as Zone[];
+export const cities = citiesJson as unknown as Zone[];
 export const instances = instancesJson as Instances;
 
 // Class spellbooks and recipe lists are larger, so each loads on demand.

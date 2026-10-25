@@ -427,12 +427,17 @@ async function buildCities() {
       nodes: [],
     });
   }
-  await writeJson('cities.json', cities);
-  for (const c of cities) {
+  // Wowhead has two Stormwind Cities (16509 and 1519); as with zones, keep the one with more quests.
+  const byName = new Map();
+  const total = (c) => Object.values(c.factions).reduce((n, f) => n + f.quests, 0);
+  for (const c of cities) if (!byName.has(c.name) || total(byName.get(c.name)) < total(c)) byName.set(c.name, c);
+  const result = [...byName.values()];
+  await writeJson('cities.json', result);
+  for (const c of result) {
     const f = Object.entries(c.factions).map(([k, v]) => `${k[0]} ${v.quests}q`).join(', ');
     console.log(`city ${c.name}: ${f}`);
   }
-  return cities;
+  return result;
 }
 
 // ---------------------------------------------------------------- quests

@@ -7,7 +7,8 @@
 //   - wago.tools: raw DB2 tables from the Forever client (product "wowf").
 //   - wowhead.com/forever: zone list plus each zone's quests and gathering nodes
 //     ("wowhead"; capital cities too, for their class quests), every quest's page
-//     ("quests", slow: ~3,000 pages, an hour or so) and item tooltips ("items", via Wowhead's tooltip API).
+//     ("quests", slow: ~3,000 pages, an hour or so) and item tooltips ("items", via
+//     Wowhead's tooltip API).
 //     Wowhead serves a JS challenge to plain HTTP clients, so pages are rendered in
 //     a headless Chromium through playwright-core. Point CHROMIUM_PATH at a
 //     Chrome/Chromium binary if it isn't found automatically.

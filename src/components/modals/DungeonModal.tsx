@@ -79,7 +79,8 @@ export function DungeonModal({
 
   const attunements = (bundle?.attunements ?? []).filter((a) => !a.faction || a.faction === race.faction);
   const attunementIds = new Set((bundle?.attunements ?? []).flatMap((a) => a.quests.flat()));
-  const quests = bundle ? questsFor(bundle.quests, race, cls).filter((q) => !attunementIds.has(q.id)) : [];
+  const mine = bundle ? questsFor(bundle.quests, race, cls) : [];
+  const quests = mine.filter((q) => !attunementIds.has(q.id));
   const fit = dungeon ? dungeonFit(dungeon, level) : undefined;
 
   return (
@@ -176,6 +177,8 @@ export function DungeonModal({
                 {quests.length ? (
                   <QuestList
                     quests={quests}
+                    takeable={mine}
+                    faction={race.faction}
                     bundle={bundle}
                     level={level}
                     here={bundle.mapZone}

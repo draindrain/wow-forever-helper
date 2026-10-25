@@ -110,11 +110,15 @@ export function parseQuestPage(id, html) {
 
   const series = [];
   for (const row of doc.querySelectorAll('table.series tr')) {
-    const step = row.querySelectorAll('td div').map((div) => {
-      const link = div.querySelector('a[href*="/quest="]');
-      return link
-        ? { id: Number(/quest=(\d+)/.exec(link.getAttribute('href'))[1]), name: decode(link.text.trim()) }
-        : { id, name: decode(div.text.trim()) };
+    // A step that offers alternatives lists them in one div, split by <br>: a link for each
+    // other quest, and this page's own quest in bold (or as bare text when it stands alone).
+    const step = row.querySelectorAll('td div').flatMap((div) => {
+      const alts = div.querySelectorAll('a[href*="/quest="], b').map((el) =>
+        el.tagName === 'A'
+          ? { id: Number(/quest=(\d+)/.exec(el.getAttribute('href'))[1]), name: decode(el.text.trim()) }
+          : { id, name: decode(el.text.trim()) },
+      );
+      return alts.length ? alts : [{ id, name: decode(div.text.trim()) }];
     });
     if (step.length) series.push(step);
   }

@@ -1,6 +1,6 @@
 import { classById, raceById, zoneById } from '../../data';
 import { levelColor } from '../../lib/game';
-import type { ChainStep, Quest, QuestBundle, QuestGiver } from '../../types';
+import type { ChainStep, Faction, Quest, QuestBundle, QuestGiver } from '../../types';
 import { Badge, ItemIcon, Money } from '../ui';
 import { useModal } from './ModalContext';
 
@@ -141,6 +141,8 @@ export function ChainCard({
   level,
   here,
   visible,
+  takeable,
+  faction,
   hovered,
   onHover,
   title,
@@ -151,10 +153,22 @@ export function ChainCard({
   here?: number;
   /** Quest ids to show as full cards; other steps get a one-line summary. */
   visible: Set<number>;
+  /** Quest ids in the bundle this character can take; the rest are left out of the chain. */
+  takeable: Set<number>;
+  /** The character's faction: steps elsewhere for the other faction are left out too. */
+  faction?: Faction;
   title?: string;
 } & HoverProps) {
-  const steps = bundle.chains[chainId] ?? [];
   const byId = new Map(bundle.quests.map((q) => [q.id, q]));
+  // Steps this character can't take (another class's, race's or faction's version of a
+  // step) are dropped; their steps in other zones stay as one-line summaries.
+  const forOthers = (s: ChainStep) =>
+    byId.has(s.id)
+      ? !takeable.has(s.id)
+      : !!faction && (s.side === 'Alliance' || s.side === 'Horde') && s.side !== faction;
+  const steps = (bundle.chains[chainId] ?? [])
+    .map((step) => step.filter((s) => !forOthers(s)))
+    .filter((step) => step.length);
   return (
     <section className="chain-card">
       <header className="chain-head">

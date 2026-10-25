@@ -486,10 +486,30 @@ async function classCategoryQuestIds() {
 // Wowhead lists instance NPCs with an empty position ([""]).
 const isCoord = (c) => Array.isArray(c) && c.length === 2 && c.every(Number.isFinite);
 
-/** A giver with its map position, preferring a point in `zoneId` when it has several. */
+// Zone id -> continent, for the zones and cities the site lists (set in buildQuests).
+let continentOf = new Map();
+
+/**
+ * Zones a quest starts in. A giver can stand in several zones (shaman totem quests'
+ * Manifestations of Earth are one NPC in Durotar, Mulgore and Dun Morogh, with a quest per
+ * race); when the quest is turned in in one of them, that one is its zone, or else the ones
+ * on the turn-in's continent (the Horde's Call of Fire brazier also stands in Loch Modan).
+ */
+function startZones(q) {
+  const zones = [...new Set(q.points.filter((p) => p.point === 'start').map((p) => p.zone))];
+  const ends = new Set(q.points.filter((p) => p.point === 'end').map((p) => p.zone));
+  const home = zones.filter((z) => ends.has(z));
+  if (home.length) return home;
+  const endContinents = new Set([...ends].map((z) => continentOf.get(z)).filter(Boolean));
+  const near = zones.filter((z) => endContinents.has(continentOf.get(z)));
+  return near.length ? near : zones;
+}
+
+/** A giver with its map position, preferring a point in `zoneId`, then in the quest's own zone. */
 function giverOut(q, which, zoneId) {
   const points = q.points.filter((p) => p.point === which);
-  const p = points.find((x) => x.zone === zoneId) ?? points[0];
+  const own = which === 'start' ? startZones(q) : [];
+  const p = points.find((x) => x.zone === zoneId) ?? points.find((x) => own.includes(x.zone)) ?? points[0];
   const g = q[which];
   if (!g && !p) return undefined;
   const coord = isCoord(p?.coord) ? p.coord : undefined;
@@ -529,7 +549,7 @@ async function questBundle(rows, records, zoneId, extraIds = []) {
       chains[key] ??= q.series.map((s) =>
         s.map((x) => {
           const r = records.get(x.id);
-          return { id: x.id, name: x.name, level: r?.level, side: r?.side, zone: giverOut(r ?? { points: [] }, 'start', zoneId)?.zoneName };
+          return { id: x.id, name: x.name, level: r?.level, side: r?.side, zone: giverOut(r ?? { points: [] }, 'start')?.zoneName };
         }),
       );
     }
@@ -581,6 +601,7 @@ async function loadBossMaps() {
 
 /** Writes quest bundles for `zoneList` (zones and cities), each class, and dungeons and raids. */
 async function buildQuests(zoneList, dungeons) {
+  continentOf = new Map(zoneList.map((z) => [z.id, z.continent]));
   const records = await loadQuestRecords();
   if (!records.size) {
     console.log('quests: no quest records in data-raw/wowhead/quests; skipping (run data:fetch --only=quests)');
@@ -593,10 +614,24 @@ async function buildQuests(zoneList, dungeons) {
   };
   // Class and race quests: Wowhead files class quests under the class, so each joins the
   // zone it starts in, and every class gets a bundle of its own quests for level events.
-  const restricted = [...records.values()].filter((q) => q.level > 0 && (q.classes?.length || q.races?.length));
+  const restricted = [...records.values()].filter(
+    (q) => q.level > 0 && (q.classes?.length || q.races?.length) && !NOT_A_QUEST.test(q.name),
+  );
   for (const zone of zoneList) {
-    const startsHere = restricted.filter((q) => giverOut(q, 'start', zone.id)?.zone === zone.id).map((q) => q.id);
-    const bundle = await questBundle(await zoneQuestRows(zone.id), records, zone.id, startsHere);
+    const startsHere = restricted.filter((q) => startZones(q).includes(zone.id)).map((q) => q.id);
+    const rows = await zoneQuestRows(zone.id);
+    let bundle = await questBundle(rows, records, zone.id, startsHere);
+    // Chain steps that start here but that Wowhead files elsewhere (an item drop's quest,
+    // say) would only get a one-line summary naming this zone; bring them in.
+    const have = new Set(bundle.quests.map((q) => q.id));
+    const chainSteps = Object.values(bundle.chains)
+      .flat(2)
+      .map((s) => s.id)
+      .filter((id) => {
+        const r = records.get(id);
+        return !have.has(id) && r?.level > 0 && !NOT_A_QUEST.test(r.name) && startZones(r).includes(zone.id);
+      });
+    if (chainSteps.length) bundle = await questBundle(rows, records, zone.id, [...startsHere, ...chainSteps]);
     await writeJson(`quests/zone-${zone.id}.json`, { mapZone: zone.id, ...bundle });
   }
   // A class quest is filed under a class, or limited to one or two classes (Forever's new ones

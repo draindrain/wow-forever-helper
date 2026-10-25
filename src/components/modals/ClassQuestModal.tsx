@@ -59,6 +59,8 @@ export function ClassQuestModal({
             {shown.length ? (
               <QuestList
                 quests={shown}
+                takeable={mine}
+                faction={race.faction}
                 bundle={bundle}
                 level={level}
                 here={mapZone}

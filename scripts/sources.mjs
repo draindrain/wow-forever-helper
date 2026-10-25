@@ -42,8 +42,9 @@ export const CLASS_QUEST_CATEGORIES = {
 };
 export const isClassQuestCategory = (category) => Object.values(CLASS_QUEST_CATEGORIES).includes(category);
 
-// Placeholder rows (<NYI>, <UNUSED>), Legacy reward pickups and similar aren't leveling quests.
-export const NOT_A_QUEST = /^<|^Legacy Reward/;
+// Placeholder rows (<NYI>, <UNUSED>, "<CHANGE TO GOSSIP>" leftovers), Blizzard's test quest,
+// Legacy reward pickups and similar aren't leveling quests.
+export const NOT_A_QUEST = /^<|<(?:NYI|UNUSED|CHANGE (?:TO|INTO) GOSSIP)>|^\(UNUSED\)|^The "Chow" Quest|^Legacy Reward/;
 
 // CMaNGOS classic-db world database, pinned to a commit: where Classic's creatures
 // spawn, used for boss positions in the dungeons Forever keeps unchanged.

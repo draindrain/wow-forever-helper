@@ -58,6 +58,12 @@ export async function loadDungeonQuests(dungeonId: string): Promise<QuestBundle 
   return load ? importChunk(load) : null;
 }
 
+/** A class's own quests (Wowhead files them under the class, not a zone) or null if this build has none. */
+export async function loadClassQuests(classId: string): Promise<QuestBundle | null> {
+  const load = questFiles[`./generated/quests/class-${classId}.json`];
+  return load ? importChunk(load) : null;
+}
+
 export const zoneById = (id: number) => zones.find((z) => z.id === id);
 
 /** Forever map image for a Wowhead zone id (the coordinates in quest data are percentages of it). */

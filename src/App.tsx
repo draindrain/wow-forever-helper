@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
-import { classById, loadClass, raceById } from './data';
+import { classById, loadClass, loadClassQuests, raceById } from './data';
 import { clampLevel, useCharacters } from './lib/characters';
 import type { EventContext } from './lib/events';
 import { useAsync } from './lib/useAsync';
 import { AboutDialog } from './components/AboutDialog';
 import { CharacterForm } from './components/CharacterForm';
 import { Header } from './components/Header';
+import { ClassQuestModal } from './components/modals/ClassQuestModal';
 import { DungeonModal } from './components/modals/DungeonModal';
 import { ModalContext, type ModalApi, type ModalTarget } from './components/modals/ModalContext';
 import { ZoneModal } from './components/modals/ZoneModal';
@@ -45,6 +46,7 @@ export default function App() {
     () => ({
       openZone: (id) => setModal({ kind: 'zone', id }),
       openDungeon: (id) => setModal({ kind: 'dungeon', id }),
+      openClassQuest: (id) => setModal({ kind: 'classQuest', id }),
     }),
     [],
   );
@@ -55,6 +57,9 @@ export default function App() {
   const spec = cls?.specs.find((s) => s.id === active?.spec);
   const classData = useAsync(`class:${active?.classId ?? ''}`, () =>
     active ? loadClass(active.classId) : Promise.resolve(null),
+  );
+  const classQuests = useAsync(`class-quests:${active?.classId ?? ''}`, () =>
+    active ? loadClassQuests(active.classId) : Promise.resolve(null),
   );
 
   const setTab = useCallback((t: TabId) => {
@@ -83,12 +88,14 @@ export default function App() {
   const showForm = !active || editing || !valid;
 
   const ctx: EventContext | null =
-    valid && classData && classData.id === active.classId ? { character: active, race, spec, classData } : null;
+    valid && classData && classData.id === active.classId
+      ? { character: active, race, spec, classData, classQuests }
+      : null;
   const View = tabViews[tab];
 
   return (
     <ModalContext.Provider value={modalApi}>
-      <div className="app">
+      <div className={`app ${cls ? `class-${cls.id}` : ''}`}>
         <Header
           characters={store.characters}
           active={active}
@@ -168,6 +175,17 @@ export default function App() {
           <ZoneModal
             key={`zone-${modal.id}`}
             zoneId={modal.id}
+            character={active}
+            race={race}
+            cls={cls}
+            onClose={() => setModal(null)}
+          />
+        )}
+        {valid && modal?.kind === 'classQuest' && classQuests && (
+          <ClassQuestModal
+            key={`class-quest-${modal.id}`}
+            questId={modal.id}
+            bundle={classQuests}
             character={active}
             race={race}
             cls={cls}

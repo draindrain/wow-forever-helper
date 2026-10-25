@@ -6,8 +6,8 @@
 //     read by that site from the Forever client (build noted in its pages).
 //   - wago.tools: raw DB2 tables from the Forever client (product "wowf").
 //   - wowhead.com/forever: zone list plus each zone's quests and gathering nodes
-//     ("wowhead"), every quest's page ("quests", slow: ~3,000 pages, an hour or so)
-//     and item tooltips ("items", via Wowhead's tooltip API).
+//     ("wowhead"; capital cities too, for their class quests), every quest's page
+//     ("quests", slow: ~3,000 pages, an hour or so) and item tooltips ("items", via Wowhead's tooltip API).
 //     Wowhead serves a JS challenge to plain HTTP clients, so pages are rendered in
 //     a headless Chromium through playwright-core. Point CHROMIUM_PATH at a
 //     Chrome/Chromium binary if it isn't found automatically.
@@ -20,7 +20,16 @@
 import { mkdir, writeFile, readFile, readdir, access } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WAGO_BUILD, CLASSES, PROFESSIONS, ZONE_EXCLUDE, CITY_ZONE_IDS, NOT_A_QUEST, CMANGOS_DUMP } from './sources.mjs';
+import {
+  WAGO_BUILD,
+  CLASSES,
+  PROFESSIONS,
+  ZONE_EXCLUDE,
+  CITY_ZONE_IDS,
+  NOT_A_QUEST,
+  CMANGOS_DUMP,
+  isClassQuestCategory,
+} from './sources.mjs';
 import { ATTUNEMENTS, INSTANCE_ZONES, DUNGEONS } from './curated.mjs';
 import { dungeonSpawns } from './lib/cmangos.mjs';
 import { findChromium } from './lib/chromium.mjs';
@@ -154,9 +163,11 @@ async function fetchWowhead() {
   const zones = JSON.parse(extractJsonScript(await readFile(listFile, 'utf8'), 'data.page.listPage.listviews'))[0]
     .data;
   const instanceIds = new Set(Object.values(INSTANCE_ZONES).flat());
+  // Capital cities aren't leveling zones but are fetched for their class quests (trainers live there).
   const targets = zones.filter(
     (z) =>
       instanceIds.has(z.id) ||
+      CITY_ZONE_IDS.includes(z.id) ||
       (z.instance === 0 &&
         [0, 1, -1].includes(z.category) &&
         !CITY_ZONE_IDS.includes(z.id) &&
@@ -175,7 +186,10 @@ async function fetchWowhead() {
   await browser.close();
 }
 
-/** Quest ids filed under each fetched zone or instance, plus the attunement chains' last quests. */
+/**
+ * Quest ids filed under each fetched zone or instance, the class quests its page lists
+ * (Wowhead files those under the class), plus the attunement chains' last quests.
+ */
 async function questIds() {
   const ids = new Set();
   for (const file of await readdir(path.join(rawDir, 'wowhead'))) {
@@ -183,7 +197,8 @@ async function questIds() {
     if (!m) continue;
     const zoneId = Number(m[1]);
     for (const q of listviews(await readFile(path.join(rawDir, 'wowhead', file), 'utf8')).quests ?? []) {
-      if (q.category === zoneId && q.level > 0 && !NOT_A_QUEST.test(q.name)) ids.add(q.id);
+      const listed = q.category === zoneId || isClassQuestCategory(q.category);
+      if (listed && q.level > 0 && !NOT_A_QUEST.test(q.name)) ids.add(q.id);
     }
   }
   for (const list of Object.values(ATTUNEMENTS)) for (const a of list) ids.add(a.quest);

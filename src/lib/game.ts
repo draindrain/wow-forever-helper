@@ -4,6 +4,8 @@ import type {
   Faction,
   GatherNode,
   ProfessionRank,
+  Quest,
+  QuestBundle,
   Race,
   Recipe,
   Spec,
@@ -274,4 +276,42 @@ export function maxSkinLevel(skill: number): number {
 
 export function skillToSkin(level: number): number {
   return level <= 20 ? Math.max(1, (level - 10) * 10) : level * 5;
+}
+
+// ---------------------------------------------------------------- quests
+
+/** Whether this character can take a quest: their faction's (or both) and, for class or race quests, theirs. */
+export function canTakeQuest(q: Quest, race: Race, classId: string): boolean {
+  return (
+    (q.side === 'Both' || q.side === race.faction) &&
+    (!q.classes || q.classes.includes(classId)) &&
+    (!q.races || q.races.includes(race.id))
+  );
+}
+
+/** The level a quest can first be picked up at. */
+export const questUnlockLevel = (q: Quest) => q.reqLevel ?? q.level;
+
+/**
+ * The class quests this character can start, by the level they unlock: one per chain (its
+ * first step they can take) and one per quest name, so the versions for other races collapse.
+ */
+export function classQuestStarts(bundle: QuestBundle, race: Race, classId: string): Quest[] {
+  const mine = bundle.quests.filter((q) => q.classes?.includes(classId) && canTakeQuest(q, race, classId));
+  const firstStep = new Map<string, number>();
+  for (const q of mine) {
+    if (q.chain) firstStep.set(q.chain.id, Math.min(firstStep.get(q.chain.id) ?? Infinity, q.chain.step));
+  }
+  const seen = new Set<string>();
+  const out: Quest[] = [];
+  for (const q of mine) {
+    if (q.chain && q.chain.step !== firstStep.get(q.chain.id)) continue;
+    const key = q.chain ? `chain ${q.chain.id}` : `${q.name} ${questUnlockLevel(q)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(q);
+  }
+  return out.sort(
+    (a, b) => questUnlockLevel(a) - questUnlockLevel(b) || a.level - b.level || a.name.localeCompare(b.name),
+  );
 }

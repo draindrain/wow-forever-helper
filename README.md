@@ -16,13 +16,17 @@ the details:
 - **Overview** (the default) packs in as much as fits: what's new at your trainer this level, what unlocks
   over the next levels, where to quest, dungeons in range, and your trade skills with their best skill-ups.
 - **Class skills**: new and upcoming trainer spells, your spellbook with one column per talent tree (your
-  spec's first), plus racials, talent milestones (dual spec at 40, spec talents) and gear unlocks.
+  spec's first), plus racials, class quests, talent milestones (dual spec at 40, spec talents) and gear unlocks.
 - **Quests & dungeons**: zones for your faction around your level with how many quests sit at your level, the
   herbs and veins you can gather there, and the next zones coming up; dungeons in range with entry level and
   bosses; later dungeons; battlegrounds and raids.
 - **Trade skills**: one column per profession. Track your skill, see when the next rank unlocks, the recipes
   that give skill-ups now and what unlocks soon. Mining and Herbalism also list the nodes you can gather and
   where; Skinning shows the highest level you can skin.
+
+Class quests (pet taming, warlock demons, shaman totems and the like) show up in "New at level" and "Coming up"
+at the level they unlock, wherever they start; click one for its giver on the map and the whole chain. In zone
+views they stand out in your class's colour, and race-only quests carry a race badge.
 
 Click any zone or dungeon for its quests. A zone opens with its map: every quest giver is pinned as a `!`
 (pick up) or `?` (turn in) coloured by difficulty for you, and hovering a quest lights up its pins. Each quest

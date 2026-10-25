@@ -538,6 +538,9 @@ kbd {
 }
 .badge-gold { color: var(--gold); background: rgba(255, 209, 0, 0.08); }
 .badge-purple { color: #c89bff; background: rgba(163, 53, 238, 0.12); }
+/* In your class's colour (set on .app) */
+.event.is-class-quest .event-title { color: var(--class, inherit); }
+.badge-class { color: var(--class, #c89bff); background: color-mix(in srgb, var(--class, #a335ee) 14%, transparent); }
 .badge-grey { color: var(--d-grey); }
 .badge-green { color: #6fe06f; background: rgba(64, 192, 64, 0.1); }
 .badge-blue { color: #6fb3ff; background: rgba(0, 112, 221, 0.12); }
@@ -1046,6 +1049,10 @@ kbd {
 .pin-red { --pin: var(--d-red); }
 .pin-green { --pin: var(--d-green); }
 .pin-grey { --pin: #b0b0b0; }
+/* Class quest givers: a glow in your class's colour around the mark */
+.pin.is-class {
+  text-shadow: 0 0 3px var(--class), 0 0 6px var(--class), 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+}
 .map-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
 .map-legend .pin { font-size: 14px; margin-right: 2px; }
 
@@ -1064,6 +1071,14 @@ kbd {
 .quest-card.d-border-orange { border-left-color: var(--d-orange); }
 .quest-card.d-border-yellow { border-left-color: var(--d-yellow); }
 .quest-card.d-border-green { border-left-color: var(--d-green); }
+/* Class and race quests stand out from a zone's other quests */
+.quest-card.is-class {
+  background: color-mix(in srgb, var(--class, #a335ee) 9%, rgba(0, 0, 0, 0.32));
+  border-top-color: color-mix(in srgb, var(--class, #a335ee) 45%, transparent);
+  border-right-color: color-mix(in srgb, var(--class, #a335ee) 45%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--class, #a335ee) 45%, transparent);
+}
+.quest-card.is-race { border-top-color: rgba(80, 150, 255, 0.3); border-right-color: rgba(80, 150, 255, 0.3); border-bottom-color: rgba(80, 150, 255, 0.3); }
 .quest-card.is-hovered { background-color: rgba(255, 209, 0, 0.08); border-top-color: var(--trim); border-right-color: var(--trim); border-bottom-color: var(--trim); }
 .quest-head { display: flex; align-items: baseline; gap: 7px; }
 .quest-level { flex: none; min-width: 20px; font-family: var(--font-display); font-weight: 700; }

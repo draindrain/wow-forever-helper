@@ -55,6 +55,7 @@ export function QuestMap({
           const colors = pin.quests.map((q) => levelColor(q.level, level));
           const color = order.find((c) => colors.includes(c)) ?? 'grey';
           const hot = pin.quests.some((q) => q.id === hovered);
+          const forClass = pin.quests.some((q) => q.classes);
           return (
             <span
               key={pin.key}
@@ -74,12 +75,15 @@ export function QuestMap({
                     {pin.quests.map((q) => (
                       <div key={q.id} className="tt-line">
                         <span className={`d-${levelColor(q.level, level)}`}>[{q.level}]</span> {q.name}
+                        {q.classes && <span className="class-color"> (class quest)</span>}
                       </div>
                     ))}
                   </>
                 }
               >
-                <span className={`pin pin-${pin.kind} pin-${color}`}>{pin.kind === 'start' ? '!' : '?'}</span>
+                <span className={`pin pin-${pin.kind} pin-${color} ${forClass ? 'is-class' : ''}`}>
+                  {pin.kind === 'start' ? '!' : '?'}
+                </span>
               </Tooltip>
             </span>
           );
@@ -92,6 +96,11 @@ export function QuestMap({
         <span>
           <span className="pin pin-end pin-yellow">?</span> Turn in
         </span>
+        {quests.some((q) => q.classes) && (
+          <span>
+            <span className="pin pin-start pin-yellow is-class">!</span> Class quest
+          </span>
+        )}
         <span className="muted">
           Colour shows the quest's difficulty for you. Hover a quest to find it; scroll or pinch to zoom, drag to pan.
         </span>

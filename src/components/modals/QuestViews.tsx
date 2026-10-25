@@ -153,8 +153,16 @@ export function ChainCard({
   visible: Set<number>;
   title?: string;
 } & HoverProps) {
-  const steps = bundle.chains[chainId] ?? [];
   const byId = new Map(bundle.quests.map((q) => [q.id, q]));
+  // Class or race steps left out of `visible` are for other characters (a warlock's take on a
+  // step, say), so they're dropped; steps from other zones stay as one-line summaries.
+  const forOthers = (s: ChainStep) => {
+    const q = byId.get(s.id);
+    return !!q && !visible.has(q.id) && !!(q.classes?.length || q.races?.length);
+  };
+  const steps = (bundle.chains[chainId] ?? [])
+    .map((step) => step.filter((s) => !forOthers(s)))
+    .filter((step) => step.length);
   return (
     <section className="chain-card">
       <header className="chain-head">

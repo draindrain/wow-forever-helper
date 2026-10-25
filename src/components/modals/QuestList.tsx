@@ -1,5 +1,5 @@
 import { canTakeQuest } from '../../lib/game';
-import type { ClassMeta, Quest, QuestBundle, Race } from '../../types';
+import type { ClassMeta, Faction, Quest, QuestBundle, Race } from '../../types';
 import { ChainCard, QuestCard, type HoverProps } from './QuestViews';
 
 /**
@@ -11,10 +11,21 @@ export function QuestList({
   bundle,
   level,
   here,
+  takeable,
+  faction,
   hovered,
   onHover,
-}: { quests: Quest[]; bundle: QuestBundle; level: number; here?: number } & HoverProps) {
+}: {
+  quests: Quest[];
+  bundle: QuestBundle;
+  level: number;
+  here?: number;
+  /** Every quest in the bundle the character can take, when `quests` is a filtered subset. */
+  takeable?: Quest[];
+  faction?: Faction;
+} & HoverProps) {
   const visible = new Set(quests.map((q) => q.id));
+  const canTake = new Set((takeable ?? quests).map((q) => q.id));
   const groups: { key: string; level: number; chain?: string; quest?: Quest }[] = [];
   const chainsSeen = new Set<string>();
   for (const q of quests) {
@@ -38,6 +49,8 @@ export function QuestList({
             level={level}
             here={here}
             visible={visible}
+            takeable={canTake}
+            faction={faction}
             hovered={hovered}
             onHover={onHover}
           />

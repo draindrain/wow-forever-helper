@@ -606,10 +606,24 @@ async function buildQuests(zoneList, dungeons) {
   };
   // Class and race quests: Wowhead files class quests under the class, so each joins the
   // zone it starts in, and every class gets a bundle of its own quests for level events.
-  const restricted = [...records.values()].filter((q) => q.level > 0 && (q.classes?.length || q.races?.length));
+  const restricted = [...records.values()].filter(
+    (q) => q.level > 0 && (q.classes?.length || q.races?.length) && !NOT_A_QUEST.test(q.name),
+  );
   for (const zone of zoneList) {
     const startsHere = restricted.filter((q) => startZones(q).includes(zone.id)).map((q) => q.id);
-    const bundle = await questBundle(await zoneQuestRows(zone.id), records, zone.id, startsHere);
+    const rows = await zoneQuestRows(zone.id);
+    let bundle = await questBundle(rows, records, zone.id, startsHere);
+    // Chain steps that start here but that Wowhead files elsewhere (an item drop's quest,
+    // say) would only get a one-line summary naming this zone; bring them in.
+    const have = new Set(bundle.quests.map((q) => q.id));
+    const chainSteps = Object.values(bundle.chains)
+      .flat(2)
+      .map((s) => s.id)
+      .filter((id) => {
+        const r = records.get(id);
+        return !have.has(id) && r?.level > 0 && !NOT_A_QUEST.test(r.name) && startZones(r).includes(zone.id);
+      });
+    if (chainSteps.length) bundle = await questBundle(rows, records, zone.id, [...startsHere, ...chainSteps]);
     await writeJson(`quests/zone-${zone.id}.json`, { mapZone: zone.id, ...bundle });
   }
   // A class quest is filed under a class, or limited to one or two classes (Forever's new ones

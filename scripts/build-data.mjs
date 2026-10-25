@@ -486,16 +486,23 @@ async function classCategoryQuestIds() {
 // Wowhead lists instance NPCs with an empty position ([""]).
 const isCoord = (c) => Array.isArray(c) && c.length === 2 && c.every(Number.isFinite);
 
+// Zone id -> continent, for the zones and cities the site lists (set in buildQuests).
+let continentOf = new Map();
+
 /**
  * Zones a quest starts in. A giver can stand in several zones (shaman totem quests'
  * Manifestations of Earth are one NPC in Durotar, Mulgore and Dun Morogh, with a quest per
- * race); when the quest is turned in in one of them, that one is its zone.
+ * race); when the quest is turned in in one of them, that one is its zone, or else the ones
+ * on the turn-in's continent (the Horde's Call of Fire brazier also stands in Loch Modan).
  */
 function startZones(q) {
   const zones = [...new Set(q.points.filter((p) => p.point === 'start').map((p) => p.zone))];
   const ends = new Set(q.points.filter((p) => p.point === 'end').map((p) => p.zone));
   const home = zones.filter((z) => ends.has(z));
-  return home.length ? home : zones;
+  if (home.length) return home;
+  const endContinents = new Set([...ends].map((z) => continentOf.get(z)).filter(Boolean));
+  const near = zones.filter((z) => endContinents.has(continentOf.get(z)));
+  return near.length ? near : zones;
 }
 
 /** A giver with its map position, preferring a point in `zoneId`, then in the quest's own zone. */
@@ -594,6 +601,7 @@ async function loadBossMaps() {
 
 /** Writes quest bundles for `zoneList` (zones and cities), each class, and dungeons and raids. */
 async function buildQuests(zoneList, dungeons) {
+  continentOf = new Map(zoneList.map((z) => [z.id, z.continent]));
   const records = await loadQuestRecords();
   if (!records.size) {
     console.log('quests: no quest records in data-raw/wowhead/quests; skipping (run data:fetch --only=quests)');

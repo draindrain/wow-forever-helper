@@ -617,6 +617,11 @@ async function buildQuests(zoneList, dungeons) {
   const restricted = [...records.values()].filter(
     (q) => q.level > 0 && (q.classes?.length || q.races?.length) && !NOT_A_QUEST.test(q.name),
   );
+  // Which bundle each quest is in (zones first), so a chain step from another bundle can load.
+  const questHome = {};
+  const home = (name, bundle) => {
+    for (const q of bundle.quests) questHome[q.id] ??= name;
+  };
   for (const zone of zoneList) {
     const startsHere = restricted.filter((q) => startZones(q).includes(zone.id)).map((q) => q.id);
     const rows = await zoneQuestRows(zone.id);
@@ -633,6 +638,7 @@ async function buildQuests(zoneList, dungeons) {
       });
     if (chainSteps.length) bundle = await questBundle(rows, records, zone.id, [...startsHere, ...chainSteps]);
     await writeJson(`quests/zone-${zone.id}.json`, { mapZone: zone.id, ...bundle });
+    home(`zone-${zone.id}`, bundle);
   }
   // A class quest is filed under a class, or limited to one or two classes (Forever's new ones
   // file under their zone). Profession and armor quests list more classes and don't count.
@@ -645,6 +651,7 @@ async function buildQuests(zoneList, dungeons) {
       .map((q) => q.id);
     const bundle = await questBundle([], records, undefined, ids);
     await writeJson(`quests/class-${classId}.json`, bundle);
+    home(`class-${classId}`, bundle);
     console.log(`class quests ${classId}: ${bundle.quests.length}`);
   }
   const pinsFor = await loadBossMaps();
@@ -669,7 +676,9 @@ async function buildQuests(zoneList, dungeons) {
       console.log(`boss pins ${d.id}: ${n}/${pinned.bosses.length} bosses`);
     }
     await writeJson(`quests/dungeon-${d.id}.json`, { mapZone: zoneIds[0], ...bundle, attunements, ...pinned });
+    home(`dungeon-${d.id}`, bundle);
   }
+  await writeJson('quest-index.json', questHome);
   const sizes = { quests: records.size, items: [...itemTips.values()].filter(Boolean).length };
   console.log(`quests: ${sizes.quests} quest records, ${sizes.items} item tooltips`);
 }

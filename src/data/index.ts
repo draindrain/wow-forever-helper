@@ -67,6 +67,15 @@ export async function loadClassQuests(classId: string): Promise<QuestBundle | nu
   return load ? importChunk(load) : null;
 }
 
+const loadQuestIndex = () => import('./generated/quest-index.json') as Promise<{ default: Record<string, string> }>;
+
+/** The bundle a quest is in (a zone's, a class's or a dungeon's) or null if this build has none. */
+export async function loadQuestHome(questId: number): Promise<QuestBundle | null> {
+  const name = (await importChunk(loadQuestIndex))[questId];
+  const load = name ? questFiles[`./generated/quests/${name}.json`] : undefined;
+  return load ? importChunk(load) : null;
+}
+
 export const zoneById = (id: number) => zones.find((z) => z.id === id) ?? cities.find((c) => c.id === id);
 
 /** Forever map image for a Wowhead zone id (the coordinates in quest data are percentages of it). */

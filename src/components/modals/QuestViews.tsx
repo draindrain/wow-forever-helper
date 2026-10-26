@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { classById, raceById, zoneById } from '../../data';
+import { useState, type ReactNode } from 'react';
+import { classById, loadQuestHome, raceById, zoneById } from '../../data';
 import { isDone, useDone } from '../../lib/done';
 import { levelColor } from '../../lib/game';
+import { useAsync } from '../../lib/useAsync';
 import type { ChainStep, Faction, Quest, QuestBundle, QuestGiver } from '../../types';
 import { Badge, ItemIcon, Money } from '../ui';
 import { useModal } from './ModalContext';
@@ -196,7 +197,30 @@ export function QuestCard({
   );
 }
 
-/** A quest chain: every step in order, with full cards for the steps in this bundle. */
+/** A chain step from another bundle (another zone's, a dungeon's), as a full card once it loads. */
+function ElsewhereCard({
+  step,
+  line,
+  ...props
+}: { step: ChainStep; line: ReactNode } & Omit<Parameters<typeof QuestCard>[0], 'quest' | 'bundle'>) {
+  const bundle = useAsync(`quest-home:${step.id}`, () => loadQuestHome(step.id));
+  const quest = bundle?.quests.find((q) => q.id === step.id);
+  if (bundle && quest) return <QuestCard quest={quest} bundle={bundle} {...props} />;
+  return (
+    <>
+      {line}
+      <div className="small muted chain-step-note">
+        {bundle === undefined ? 'Loading…' : 'No details for this quest.'}
+      </div>
+    </>
+  );
+}
+
+/**
+ * A quest chain: every step in order, with full cards for the steps in this bundle. Steps
+ * left out of the list (another zone's, or off the level range) are one-line summaries that
+ * open into a card on a click, and close again when the card is deselected.
+ */
 export function ChainCard({
   chainId,
   bundle,
@@ -224,7 +248,18 @@ export function ChainCard({
   title?: string;
 } & HoverProps) {
   const { done } = useDone();
+  const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
   const byId = new Map(bundle.quests.map((q) => [q.id, q]));
+  const setOpen = (id: number, open: boolean) => {
+    setExpanded((s) => {
+      const next = new Set(s);
+      if (open) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+    // Opening a step picks it out too, so closing it is the same click as deselecting.
+    if (open !== !!selected?.has(id)) onSelect?.(id);
+  };
   // Steps this character can't take (another class's, race's or faction's version of a
   // step) are dropped; their steps in other zones stay as one-line summaries.
   const forOthers = (s: ChainStep) =>
@@ -248,21 +283,24 @@ export function ChainCard({
           <li key={i}>
             {step.map((s: ChainStep) => {
               const q = byId.get(s.id);
-              return q && visible.has(q.id) ? (
-                <QuestCard
+              const card = { level, here, hovered, onHover, selected, stepLabel: `${i + 1}.` };
+              if (q && visible.has(q.id))
+                return <QuestCard key={s.id} quest={q} bundle={bundle} onSelect={onSelect} {...card} />;
+              const line = (
+                <div
                   key={s.id}
-                  quest={q}
-                  bundle={bundle}
-                  level={level}
-                  here={here}
-                  hovered={hovered}
-                  onHover={onHover}
-                  selected={selected}
-                  onSelect={onSelect}
-                  stepLabel={`${i + 1}.`}
-                />
-              ) : (
-                <div key={s.id} className={`chain-step-line ${isDone(done, s.id) ? 'is-done' : ''}`}>
+                  role="button"
+                  tabIndex={0}
+                  title="Show this step"
+                  className={`chain-step-line is-expandable ${isDone(done, s.id) ? 'is-done' : ''}`}
+                  onClick={() => setOpen(s.id, !expanded.has(s.id))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setOpen(s.id, !expanded.has(s.id));
+                    }
+                  }}
+                >
                   <span className="quest-step">{i + 1}.</span>
                   {isDone(done, s.id) && (
                     <span className="done-mark" title="Done">
@@ -275,6 +313,13 @@ export function ChainCard({
                   <span>{s.name}</span>
                   {s.zone && <span className="muted small"> · {s.zone}</span>}
                 </div>
+              );
+              if (!expanded.has(s.id)) return line;
+              const close = () => setOpen(s.id, false);
+              return q ? (
+                <QuestCard key={s.id} quest={q} bundle={bundle} onSelect={close} {...card} />
+              ) : (
+                <ElsewhereCard key={s.id} step={s} line={line} onSelect={close} {...card} />
               );
             })}
           </li>

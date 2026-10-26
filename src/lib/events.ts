@@ -76,7 +76,7 @@ export function eventsAt(ctx: EventContext, level: number): LevelEvent[] {
     if (milestone.level === level) events.push({ kind: 'milestone', milestone });
   }
   if (ctx.classQuests) {
-    for (const quest of classQuestStarts(ctx.classQuests, ctx.race, ctx.character.classId)) {
+    for (const quest of classQuestStarts(ctx.classQuests, ctx.race, ctx.character.classId, ctx.character.done)) {
       if (questUnlockLevel(quest) === level) events.push({ kind: 'quest', quest });
     }
   }

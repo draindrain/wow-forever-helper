@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { isDone, useDone } from '../../lib/done';
 import { questUnlockLevel } from '../../lib/game';
 import type { Character, ClassMeta, QuestBundle, Race } from '../../types';
 import { Badge } from '../ui';
 import { Modal } from './Modal';
-import { QuestList, questsFor } from './QuestList';
+import { hideDone, QuestList, questsFor } from './QuestList';
 import { QuestMap } from './QuestMap';
+import { ShowDone, useQuestFocus } from './QuestViews';
 
 /**
  * A class quest and the rest of its chain. Class quests often start in a capital city,
@@ -25,11 +27,15 @@ export function ClassQuestModal({
   cls: ClassMeta;
   onClose: () => void;
 }) {
-  const [hovered, setHovered] = useState<number>();
+  const [showDone, setShowDone] = useState(false);
+  const focus = useQuestFocus();
+  const { done } = useDone();
   const level = character.level;
   const quest = bundle.quests.find((q) => q.id === questId);
   const mine = questsFor(bundle.quests, race, cls);
-  const shown = quest?.chain ? mine.filter((q) => q.chain?.id === quest.chain!.id) : quest ? [quest] : [];
+  const chain = quest?.chain ? mine.filter((q) => q.chain?.id === quest.chain!.id) : quest ? [quest] : [];
+  const shown = hideDone(chain, done, showDone);
+  const doneCount = chain.filter((q) => isDone(done, q.id)).length;
   const mapZone = quest?.start?.zone;
   const unlock = quest && questUnlockLevel(quest);
 
@@ -49,12 +55,17 @@ export function ClassQuestModal({
       <div className="modal-split">
         <aside className="modal-side">
           {mapZone !== undefined ? (
-            <QuestMap zoneId={mapZone} quests={shown} level={level} hovered={hovered} onHover={setHovered} />
+            <QuestMap zoneId={mapZone} quests={hideDone(shown, done, false)} level={level} {...focus} />
           ) : (
             <p className="muted small">No map position for this quest's giver.</p>
           )}
         </aside>
         <section className="modal-main">
+          {doneCount > 0 && (
+            <div className="modal-toolbar">
+              <ShowDone count={doneCount} show={showDone} onChange={setShowDone} />
+            </div>
+          )}
           <div className="modal-scroll">
             {shown.length ? (
               <QuestList
@@ -64,9 +75,15 @@ export function ClassQuestModal({
                 bundle={bundle}
                 level={level}
                 here={mapZone}
-                hovered={hovered}
-                onHover={setHovered}
+                {...focus}
               />
+            ) : doneCount ? (
+              <p className="muted">
+                You've done this chain.{' '}
+                <button type="button" className="link-button" onClick={() => setShowDone(true)}>
+                  Show done
+                </button>
+              </p>
             ) : (
               <p className="muted">This quest isn't in the current data.</p>
             )}

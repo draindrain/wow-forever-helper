@@ -212,6 +212,15 @@ export interface Character {
   spec: string;
   level: number;
   professions: CharacterProfession[];
+  /** Quests marked done, by quest id. */
+  done?: Record<string, DoneQuest>;
+}
+
+/** What a done quest needs for taking it off the zone counters without loading the zone's quests. */
+export interface DoneQuest {
+  level: number;
+  /** The zone or city whose quest counts it was part of; none for class and instance quests. */
+  zone?: number;
 }
 
 // ---- quests (src/data/generated/quests/*.json)

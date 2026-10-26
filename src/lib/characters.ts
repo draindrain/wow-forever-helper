@@ -60,8 +60,9 @@ export function useCharacters() {
       return {
         ...s,
         activeId: character.id,
+        // Keep what the form doesn't edit, such as done quests.
         characters: exists
-          ? s.characters.map((c) => (c.id === character.id ? character : c))
+          ? s.characters.map((c) => (c.id === character.id ? { ...c, ...character } : c))
           : [...s.characters, character],
       };
     });

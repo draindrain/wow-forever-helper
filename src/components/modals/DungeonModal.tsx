@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { instances, loadDungeonQuests } from '../../data';
+import { isDone, useDone } from '../../lib/done';
 import { dungeonFit } from '../../lib/game';
 import { useAsync } from '../../lib/useAsync';
 import type { Attunement, Character, ClassMeta, QuestBundle, Race } from '../../types';
 import { Badge, StatusMark } from '../ui';
 import { BossMap } from './BossMap';
 import { Modal } from './Modal';
-import { QuestList, questsFor } from './QuestList';
-import { QuestCard, type HoverProps } from './QuestViews';
+import { hideDone, QuestList, questsFor } from './QuestList';
+import { QuestCard, ShowDone, useQuestFocus, type HoverProps } from './QuestViews';
 
 function AttunementCard({
   attunement,
@@ -16,7 +17,9 @@ function AttunementCard({
   hovered,
   onHover,
   here,
-}: { attunement: Attunement; bundle: QuestBundle; level: number; here?: number } & HoverProps) {
+  showDone,
+}: { attunement: Attunement; bundle: QuestBundle; level: number; here?: number; showDone: boolean } & HoverProps) {
+  const { done } = useDone();
   const byId = new Map(bundle.quests.map((q) => [q.id, q]));
   return (
     <section className="chain-card attunement">
@@ -35,6 +38,17 @@ function AttunementCard({
               <li key={i}>
                 {step.map((id) => {
                   const q = byId.get(id);
+                  if (q && !showDone && isDone(done, id)) {
+                    return (
+                      <div key={id} className="chain-step-line is-done">
+                        <span className="quest-step">{i + 1}.</span>
+                        <span className="done-mark" title="Done">
+                          ✓
+                        </span>
+                        <span>{q.name}</span>
+                      </div>
+                    );
+                  }
                   return q ? (
                     <QuestCard
                       key={id}
@@ -74,13 +88,17 @@ export function DungeonModal({
   const dungeon = instances.dungeons.find((d) => d.id === dungeonId);
   const raid = instances.raids.find((r) => r.id === dungeonId);
   const bundle = useAsync(`dungeon-quests:${dungeonId}`, () => loadDungeonQuests(dungeonId));
-  const [hovered, setHovered] = useState<number>();
+  const [showDone, setShowDone] = useState(false);
+  const { hovered, onHover } = useQuestFocus();
+  const { done } = useDone();
   const level = character.level;
 
   const attunements = (bundle?.attunements ?? []).filter((a) => !a.faction || a.faction === race.faction);
   const attunementIds = new Set((bundle?.attunements ?? []).flatMap((a) => a.quests.flat()));
   const mine = bundle ? questsFor(bundle.quests, race, cls) : [];
-  const quests = mine.filter((q) => !attunementIds.has(q.id));
+  const allQuests = mine.filter((q) => !attunementIds.has(q.id));
+  const quests = hideDone(allQuests, done, showDone);
+  const doneCount = mine.filter((q) => isDone(done, q.id)).length;
   const fit = dungeon ? dungeonFit(dungeon, level) : undefined;
 
   return (
@@ -148,6 +166,11 @@ export function DungeonModal({
           )}
         </aside>
         <section className="modal-main">
+          {doneCount > 0 && (
+            <div className="modal-toolbar">
+              <ShowDone count={doneCount} show={showDone} onChange={setShowDone} />
+            </div>
+          )}
           <div className="modal-scroll">
             {!bundle ? (
               <p className="muted">{bundle === null ? 'No quest data for this instance yet.' : 'Loading quests…'}</p>
@@ -164,7 +187,8 @@ export function DungeonModal({
                         level={level}
                         here={bundle.mapZone}
                         hovered={hovered}
-                        onHover={setHovered}
+                        onHover={onHover}
+                        showDone={showDone}
                       />
                     ))}
                   </div>
@@ -183,8 +207,10 @@ export function DungeonModal({
                     level={level}
                     here={bundle.mapZone}
                     hovered={hovered}
-                    onHover={setHovered}
+                    onHover={onHover}
                   />
+                ) : allQuests.length ? (
+                  <p className="muted small">You've done every quest here.</p>
                 ) : (
                   <p className="muted small">No {race.faction} quests known for this instance yet.</p>
                 )}

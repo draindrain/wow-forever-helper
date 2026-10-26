@@ -109,7 +109,7 @@ function ClassQuestRow({ quest, ctx }: { quest: Quest; ctx: EventContext }) {
 function classQuestRows(ctx: EventContext) {
   if (!ctx.classQuests) return [];
   const level = ctx.character.level;
-  const quests = classQuestStarts(ctx.classQuests, ctx.race, ctx.character.classId).filter(
+  const quests = classQuestStarts(ctx.classQuests, ctx.race, ctx.character.classId, ctx.character.done).filter(
     (q) => questUnlockLevel(q) > level || levelColor(q.level, level) !== 'grey',
   );
   if (!quests.length) return [];

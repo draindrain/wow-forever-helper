@@ -1083,7 +1083,34 @@ kbd {
 }
 .quest-card.is-race { border-top-color: rgba(80, 150, 255, 0.3); border-right-color: rgba(80, 150, 255, 0.3); border-bottom-color: rgba(80, 150, 255, 0.3); }
 .quest-card.is-hovered { background-color: rgba(255, 209, 0, 0.08); border-top-color: var(--trim); border-right-color: var(--trim); border-bottom-color: var(--trim); }
+.quest-card.is-selectable { cursor: pointer; }
+.quest-card.is-selected { border-top-color: var(--gold); border-right-color: var(--gold); border-bottom-color: var(--gold); box-shadow: inset 0 0 0 1px rgba(255, 209, 0, 0.25); }
+/* Done quests, when shown so they can be unmarked */
+.quest-card.is-done { opacity: 0.55; }
+.quest-card.is-done .quest-name { text-decoration: line-through; text-decoration-color: var(--muted); }
 .quest-head { display: flex; align-items: baseline; gap: 7px; }
+.done-button {
+  flex: none;
+  align-self: flex-start;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--trim-dark);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.4);
+  color: transparent;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.quest-card:hover .done-button, .done-button:focus-visible { color: var(--muted); }
+.done-button:hover { border-color: var(--trim); color: var(--d-green); }
+.done-button.is-done { border-color: var(--d-green); color: var(--d-green); }
+.done-mark { color: var(--d-green); }
+.chain-step-line.is-done { opacity: 0.75; }
+.modal-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.show-done { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; color: var(--muted); cursor: pointer; }
+.show-done input { accent-color: var(--gold); margin: 0; }
 .quest-level { flex: none; min-width: 20px; font-family: var(--font-display); font-weight: 700; }
 .quest-name { flex: 1; min-width: 0; font-weight: 700; color: #fff; }
 .quest-step { margin-right: 4px; color: var(--muted); font-weight: 400; }

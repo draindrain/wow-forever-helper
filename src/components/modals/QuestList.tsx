@@ -1,5 +1,6 @@
+import { isDone } from '../../lib/done';
 import { canTakeQuest } from '../../lib/game';
-import type { ClassMeta, Faction, Quest, QuestBundle, Race } from '../../types';
+import type { ClassMeta, DoneQuest, Faction, Quest, QuestBundle, Race } from '../../types';
 import { ChainCard, QuestCard, type HoverProps } from './QuestViews';
 
 /**
@@ -15,6 +16,8 @@ export function QuestList({
   faction,
   hovered,
   onHover,
+  selected,
+  onSelect,
 }: {
   quests: Quest[];
   bundle: QuestBundle;
@@ -53,6 +56,8 @@ export function QuestList({
             faction={faction}
             hovered={hovered}
             onHover={onHover}
+            selected={selected}
+            onSelect={onSelect}
           />
         ) : (
           <QuestCard
@@ -63,11 +68,18 @@ export function QuestList({
             here={here}
             hovered={hovered}
             onHover={onHover}
+            selected={selected}
+            onSelect={onSelect}
           />
         ),
       )}
     </div>
   );
+}
+
+/** The quests to list: those not marked done, unless done ones are being shown too. */
+export function hideDone(quests: Quest[], done: Record<string, DoneQuest>, showDone: boolean) {
+  return showDone ? quests : quests.filter((q) => !isDone(done, q.id));
 }
 
 /** Quests this character can take: their faction's (or both) and, for class or race quests, theirs. */

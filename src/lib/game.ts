@@ -1,7 +1,9 @@
 import type {
   ClassData,
+  DoneQuest,
   Dungeon,
   Faction,
+  FactionRange,
   GatherNode,
   ProfessionRank,
   Quest,
@@ -117,14 +119,33 @@ export function zoneCanVisit(zone: Zone, race: Race): boolean {
   return !zone.races || zone.races.includes(race.id);
 }
 
-export function suggestZones(zones: Zone[], race: Race, level: number): ZoneSuggestion[] {
+/** A zone's quest counts by level, less the quests marked done there. */
+function questsLeft(range: FactionRange, zoneId: number, done: Record<string, DoneQuest> = {}) {
+  const histogram = { ...range.histogram };
+  let quests = range.quests;
+  for (const q of Object.values(done)) {
+    // The counts leave out some quests the zone's list shows, so never go below none.
+    if (q.zone !== zoneId || !histogram[q.level]) continue;
+    histogram[q.level]!--;
+    quests--;
+  }
+  return { histogram, quests };
+}
+
+export function suggestZones(
+  zones: Zone[],
+  race: Race,
+  level: number,
+  done?: Record<string, DoneQuest>,
+): ZoneSuggestion[] {
   const out: ZoneSuggestion[] = [];
   for (const zone of zones) {
     const range = zone.factions[race.faction];
     if (!range || !zoneCanVisit(zone, race)) continue;
+    const left = questsLeft(range, zone.id, done);
     let goodQuests = 0;
     let greenQuests = 0;
-    for (const [lvl, count] of Object.entries(range.histogram)) {
+    for (const [lvl, count] of Object.entries(left.histogram)) {
       const color = levelColor(Number(lvl), level);
       if (color === 'yellow' || color === 'orange') goodQuests += count;
       else if (color === 'green') greenQuests += count;
@@ -145,7 +166,7 @@ export function suggestZones(zones: Zone[], race: Race, level: number): ZoneSugg
       fit,
       goodQuests,
       greenQuests,
-      totalQuests: range.quests,
+      totalQuests: left.quests,
       estimated: !!range.estimated,
       isStart: zone.id === race.startZone,
     });
@@ -155,8 +176,14 @@ export function suggestZones(zones: Zone[], race: Race, level: number): ZoneSugg
 }
 
 /** Zones you'll reach within `ahead` levels that aren't suggested yet, nearest first. */
-export function upcomingZones(zones: Zone[], race: Race, level: number, ahead = 10): ZoneSuggestion[] {
-  const suggested = new Set(suggestZones(zones, race, level).map((s) => s.zone.id));
+export function upcomingZones(
+  zones: Zone[],
+  race: Race,
+  level: number,
+  done?: Record<string, DoneQuest>,
+  ahead = 10,
+): ZoneSuggestion[] {
+  const suggested = new Set(suggestZones(zones, race, level, done).map((s) => s.zone.id));
   const out: ZoneSuggestion[] = [];
   for (const zone of zones) {
     const range = zone.factions[race.faction];
@@ -169,7 +196,7 @@ export function upcomingZones(zones: Zone[], race: Race, level: number, ahead = 
       fit: 'upcoming',
       goodQuests: 0,
       greenQuests: 0,
-      totalQuests: range.quests,
+      totalQuests: questsLeft(range, zone.id, done).quests,
       estimated: !!range.estimated,
       isStart: false,
     });
@@ -184,13 +211,18 @@ export interface CitySuggestion {
 }
 
 /** Your faction's capital cities, the ones with the most quests at your level first. */
-export function cityQuests(cities: Zone[], race: Race, level: number): CitySuggestion[] {
+export function cityQuests(
+  cities: Zone[],
+  race: Race,
+  level: number,
+  done?: Record<string, DoneQuest>,
+): CitySuggestion[] {
   const out: CitySuggestion[] = [];
   for (const city of cities) {
     const range = city.factions[race.faction];
     if (!range || !zoneCanVisit(city, race)) continue;
     let quests = 0;
-    for (const [lvl, count] of Object.entries(range.histogram)) {
+    for (const [lvl, count] of Object.entries(questsLeft(range, city.id, done).histogram)) {
       const color = levelColor(Number(lvl), level);
       if (color === 'orange' || color === 'yellow' || color === 'green') quests += count;
     }
@@ -316,11 +348,18 @@ export const questUnlockLevel = (q: Quest) => q.reqLevel ?? q.level;
 
 /**
  * The class quests this character can start, by the level they unlock: one per chain (its
- * first step they can take) and one per name and level, since Wowhead keeps a copy of a
- * quest for each trainer that gives it (the one in your starting zone wins).
+ * first step they can take and haven't done) and one per name and level, since Wowhead keeps
+ * a copy of a quest for each trainer that gives it (the one in your starting zone wins).
  */
-export function classQuestStarts(bundle: QuestBundle, race: Race, classId: string): Quest[] {
-  const mine = bundle.quests.filter((q) => q.classes?.includes(classId) && canTakeQuest(q, race, classId));
+export function classQuestStarts(
+  bundle: QuestBundle,
+  race: Race,
+  classId: string,
+  done: Record<string, DoneQuest> = {},
+): Quest[] {
+  const mine = bundle.quests.filter(
+    (q) => q.classes?.includes(classId) && canTakeQuest(q, race, classId) && !(String(q.id) in done),
+  );
   const firstStep = new Map<string, number>();
   for (const q of mine) {
     if (q.chain) firstStep.set(q.chain.id, Math.min(firstStep.get(q.chain.id) ?? Infinity, q.chain.step));

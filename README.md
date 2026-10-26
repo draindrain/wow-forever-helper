@@ -30,7 +30,9 @@ at the level they unlock, wherever they start; click one for its giver on the ma
 views they stand out in your class's colour, and race-only quests carry a race badge.
 
 Click any zone or dungeon for its quests. A zone opens with its map: every quest giver is pinned as a `!`
-(pick up) or `?` (turn in) coloured by difficulty for you, and hovering a quest lights up its pins. Each quest
+(pick up) coloured by difficulty for you, and hovering a quest lights up its pins; hover or click quests to
+add a `?` where you turn them in. Tick a quest's box to mark it done: it's hidden (tick "Show done" to bring
+it back and unmark it) and no longer counted on any tab, and a done class quest moves on to its next step. Each quest
 shows its level, objective, where to pick it up and hand it in (with coordinates), its rewards (XP, money,
 reputation and items) and, for chains, every step in order. Dungeons and raids list their quests plus any key
 or attunement chain; on the Classic dungeons Forever keeps, the map shows a numbered pin for each boss.

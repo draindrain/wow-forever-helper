@@ -1,13 +1,68 @@
+import { useState } from 'react';
 import { classById, raceById, zoneById } from '../../data';
+import { isDone, useDone } from '../../lib/done';
 import { levelColor } from '../../lib/game';
 import type { ChainStep, Faction, Quest, QuestBundle, QuestGiver } from '../../types';
 import { Badge, ItemIcon, Money } from '../ui';
 import { useModal } from './ModalContext';
 
-/** Shared state for the quest list: which quest the mouse is on, to light up its pins. */
+/**
+ * Shared state for the quest list and map: which quest the mouse is on, to light up its pins,
+ * and which quests are picked out with a click, to show where to turn them in.
+ */
 export interface HoverProps {
   hovered?: number;
   onHover?: (questId: number | undefined) => void;
+  selected?: ReadonlySet<number>;
+  onSelect?: (questId: number) => void;
+}
+
+/** Hover and selection state for a quest view, to spread onto its list and map. */
+export function useQuestFocus() {
+  const [hovered, onHover] = useState<number>();
+  const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
+  const onSelect = (id: number) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  return { hovered, onHover, selected, onSelect };
+}
+
+/** Toggle for showing the quests marked done, so they can be unmarked; nothing while there are none. */
+export function ShowDone({
+  count,
+  show,
+  onChange,
+}: {
+  count: number;
+  show: boolean;
+  onChange: (show: boolean) => void;
+}) {
+  if (!count && !show) return null;
+  return (
+    <label className="show-done small">
+      <input type="checkbox" checked={show} onChange={(e) => onChange(e.target.checked)} />
+      Show done <span className="tab-count">{count}</span>
+    </label>
+  );
+}
+
+function DoneButton({ questId, onToggle }: { questId: number; onToggle: () => void }) {
+  const { done } = useDone();
+  const marked = isDone(done, questId);
+  return (
+    <button
+      type="button"
+      className={`done-button ${marked ? 'is-done' : ''}`}
+      aria-pressed={marked}
+      title={marked ? 'Done: click to mark as not done' : 'Mark as done'}
+      onClick={onToggle}
+    >
+      ✓
+    </button>
+  );
 }
 
 /** Marks class quests (and race-only ones) so they stand out among a zone's quests. */
@@ -89,6 +144,8 @@ export function QuestCard({
   here,
   hovered,
   onHover,
+  selected,
+  onSelect,
   stepLabel,
 }: {
   quest: Quest;
@@ -97,14 +154,18 @@ export function QuestCard({
   here?: number;
   stepLabel?: string;
 } & HoverProps) {
+  const { done, toggle } = useDone();
   const color = levelColor(quest.level, level);
   const sameGiver =
     quest.end && quest.start && quest.end.name === quest.start.name && quest.end.zone === quest.start.zone;
   return (
     <article
-      className={`quest-card d-border-${color} ${restrictedClass(quest)} ${hovered === quest.id ? 'is-hovered' : ''}`}
+      className={`quest-card d-border-${color} ${restrictedClass(quest)} ${hovered === quest.id ? 'is-hovered' : ''} ${selected?.has(quest.id) ? 'is-selected' : ''} ${isDone(done, quest.id) ? 'is-done' : ''} ${onSelect ? 'is-selectable' : ''}`}
       onMouseEnter={() => onHover?.(quest.id)}
       onMouseLeave={() => onHover?.(undefined)}
+      onClick={(e) => {
+        if (!(e.target as HTMLElement).closest('button, a, input')) onSelect?.(quest.id);
+      }}
     >
       <header className="quest-head">
         <span className={`quest-level d-${color}`} title={`Quest level ${quest.level}`}>
@@ -121,6 +182,7 @@ export function QuestCard({
           )}
           {quest.races && <Badge tone="blue">{quest.races.map((id) => raceById(id)?.name ?? id).join(' / ')}</Badge>}
         </span>
+        <DoneButton questId={quest.id} onToggle={() => toggle(quest)} />
       </header>
       {quest.reqLevel !== undefined && quest.reqLevel > 1 && quest.reqLevel > level && (
         <div className="small d-red">Requires level {quest.reqLevel}</div>
@@ -145,6 +207,8 @@ export function ChainCard({
   faction,
   hovered,
   onHover,
+  selected,
+  onSelect,
   title,
 }: {
   chainId: string;
@@ -159,6 +223,7 @@ export function ChainCard({
   faction?: Faction;
   title?: string;
 } & HoverProps) {
+  const { done } = useDone();
   const byId = new Map(bundle.quests.map((q) => [q.id, q]));
   // Steps this character can't take (another class's, race's or faction's version of a
   // step) are dropped; their steps in other zones stay as one-line summaries.
@@ -192,11 +257,18 @@ export function ChainCard({
                   here={here}
                   hovered={hovered}
                   onHover={onHover}
+                  selected={selected}
+                  onSelect={onSelect}
                   stepLabel={`${i + 1}.`}
                 />
               ) : (
-                <div key={s.id} className="chain-step-line">
+                <div key={s.id} className={`chain-step-line ${isDone(done, s.id) ? 'is-done' : ''}`}>
                   <span className="quest-step">{i + 1}.</span>
+                  {isDone(done, s.id) && (
+                    <span className="done-mark" title="Done">
+                      ✓
+                    </span>
+                  )}
                   {s.level !== undefined && (
                     <span className={`quest-level small d-${levelColor(s.level, level)}`}>{s.level}</span>
                   )}

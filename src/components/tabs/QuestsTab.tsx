@@ -8,13 +8,13 @@ import type { TabProps } from './types';
 
 export function QuestsTab({ character, race }: TabProps) {
   const level = character.level;
-  const zoneList = suggestZones(zones, race, level);
-  const nextZones = upcomingZones(zones, race, level);
+  const zoneList = suggestZones(zones, race, level, character.done);
+  const nextZones = upcomingZones(zones, race, level, character.done);
   const forFaction = instances.dungeons.filter((d) => !d.faction || d.faction === race.faction);
   const dungeonList = dungeonsFor(forFaction, race.faction, level);
   const later = forFaction.filter((d) => d.min > level + 3).sort((a, b) => a.min - b.min);
   const battlegrounds = instances.battlegrounds;
-  const cityList = cityQuests(cities, race, level);
+  const cityList = cityQuests(cities, race, level, character.done);
   const { openDungeon } = useModal();
 
   return (

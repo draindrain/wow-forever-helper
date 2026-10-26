@@ -17,13 +17,17 @@ interface Pin {
 
 const order: Difficulty[] = ['orange', 'yellow', 'green', 'red', 'grey'];
 
-/** Pins for quest givers on this map; one per giver, listing all their quests. */
-function pinsFor(quests: Quest[], zoneId: number): Pin[] {
+/**
+ * Pins for quest givers on this map; one per giver, listing all their quests. Turn-ins
+ * only for the `focused` quests, so the map isn't crowded with them.
+ */
+function pinsFor(quests: Quest[], zoneId: number, focused: (id: number) => boolean): Pin[] {
   const pins = new Map<string, Pin>();
   for (const q of quests) {
     for (const kind of ['start', 'end'] as const) {
       const g = q[kind];
       if (!g?.coord || g.zone !== zoneId) continue;
+      if (kind === 'end' && !focused(q.id)) continue;
       // A turn-in where the quest was picked up needs no second pin.
       if (kind === 'end' && q.start?.coord && q.start.name === g.name && q.start.zone === g.zone) continue;
       const key = `${kind}|${g.name}|${g.coord.join(',')}`;
@@ -42,10 +46,11 @@ export function QuestMap({
   level,
   hovered,
   onHover,
+  selected,
 }: { zoneId: number; quests: Quest[]; level: number } & HoverProps) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
-  const pins = pinsFor(quests, zoneId);
+  const pins = pinsFor(quests, zoneId, (id) => id === hovered || !!selected?.has(id));
   return (
     <>
       <ZoomableMap key={zoneId}>
@@ -94,7 +99,7 @@ export function QuestMap({
           <span className="pin pin-start pin-yellow">!</span> Pick up
         </span>
         <span>
-          <span className="pin pin-end pin-yellow">?</span> Turn in
+          <span className="pin pin-end pin-yellow">?</span> Turn in, for the quests you hover or click
         </span>
         {quests.some((q) => q.classes) && (
           <span>
@@ -102,7 +107,8 @@ export function QuestMap({
           </span>
         )}
         <span className="muted">
-          Colour shows the quest's difficulty for you. Hover a quest to find it; scroll or pinch to zoom, drag to pan.
+          Colour shows the quest's difficulty for you. Hover a quest to find it, click it to keep its turn-in shown;
+          scroll or pinch to zoom, drag to pan.
         </span>
       </div>
     </>

@@ -70,10 +70,10 @@ export function NewAtLevel({ ctx, onTab }: { ctx: EventContext; onTab?: (tab: Ta
 
 export function OverviewTab({ ctx, character, race, onSkill, onTab }: TabProps) {
   const level = character.level;
-  const zoneList = suggestZones(zones, race, level);
-  const nextZones = upcomingZones(zones, race, level);
+  const zoneList = suggestZones(zones, race, level, character.done);
+  const nextZones = upcomingZones(zones, race, level, character.done);
   // Cities only when they have quests at your level.
-  const cityList = cityQuests(cities, race, level).filter((s) => s.quests > 0);
+  const cityList = cityQuests(cities, race, level, character.done).filter((s) => s.quests > 0);
   const newCount = ctx ? eventsAt(ctx, level).length : 3;
   const dungeonList = dungeonsFor(instances.dungeons, race.faction, level);
   const nextDungeon = instances.dungeons

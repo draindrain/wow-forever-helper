@@ -1212,6 +1212,61 @@ kbd {
 .about-body ul { margin: 0 0 8px; padding-left: 20px; }
 .about-body li { margin-bottom: 4px; }
 
+/* ------------------------------------------------------------ news bell */
+
+.news { position: relative; flex: none; }
+.news-bell { position: relative; display: grid; place-items: center; padding: 0; }
+.news-bell.has-unread { border-color: var(--gold); box-shadow: 0 0 8px rgba(255, 190, 60, 0.45); }
+.news-badge {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  line-height: 16px;
+  color: #fff;
+  background: linear-gradient(180deg, #d4271a, #7c0d06);
+  border: 1px solid #ffb199;
+  box-shadow: 0 1px 3px #000;
+}
+
+/* .panel is a flex column in fit mode; this one sets its own height either way. */
+.panel.news-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(640px, calc(100vh - 80px));
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+}
+.news-menu .panel-title .icon-button { margin-left: auto; width: 28px; height: 28px; }
+.news-list { list-style: none; margin: 0; padding: 4px 0; overflow-y: auto; min-height: 0; }
+.news-list li + li { border-top: 1px solid var(--line); }
+.news-list a { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; color: var(--text); text-decoration: none; }
+.news-list a:hover { background: rgba(255, 210, 120, 0.06); }
+.news-list a:hover .news-title { color: var(--gold); }
+.news-title { font-weight: 700; color: var(--gold-soft); }
+.news-list .is-new { background: rgba(255, 190, 60, 0.07); }
+.news-meta { display: flex; gap: 6px; align-items: center; color: var(--muted); }
+.news-new {
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #1b150d;
+  background: var(--gold);
+}
+.news-empty { margin: 0; padding: 16px 12px; }
+.news-foot { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); }
+
 /* ------------------------------------------------------------ small screens (scrolling layout) */
 
 @media (max-width: 1099px) {
@@ -1223,7 +1278,9 @@ kbd {
   .app { padding: 8px 8px 20px; }
   .tab { padding: 6px 10px; font-size: 0.85rem; }
   .nameplate { max-width: none; flex: 1 1 100%; }
-  .switcher { flex: 1 1 calc(100% - 50px); }
+  .switcher { flex: 1 1 calc(100% - 92px); }
+  .news { position: static; }
+  .panel.news-menu { position: fixed; top: 8px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 16px); }
   .switcher .select { flex: 1; max-width: none; }
 }
 

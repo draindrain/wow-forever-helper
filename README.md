@@ -38,6 +38,10 @@ reputation and items) and, for chains, every step in order. Dungeons and raids l
 or attunement chain; on the Classic dungeons Forever keeps, the map shows a numbered pin for each boss.
 Hover a spell, talent, racial, recipe or reward item for its tooltip.
 
+The bell at the top right shows how many WoW Forever stories Wowhead has posted since you last looked; click it
+for the latest stories (each opens on Wowhead), which resets the count. An open page checks for news every few
+minutes and whenever you come back to its tab.
+
 Several characters can be saved; they live in your browser's local storage. Visits are counted with Google
 Analytics through the script all drnz.se sites share (`https://drnz.se/analytics.js`, from the `hub` repository),
 and only after the visitor accepts its cookie notice; [drnz.se/cookies](https://drnz.se/cookies/) has the details. Keyboard: `+` / `-` change
@@ -153,6 +157,16 @@ the repository root (git-ignored; a token that can push and open pull requests o
 `-- --no-pr` to leave the changes in your working tree instead, `-- --no-agent` to skip the agent, or
 `-- --skip-fetch` to rerun the agent on the data you already have. Changes to quests that already exist aren't
 re-fetched weekly; run `npm run data:fetch -- --only=quests --force` now and then for a full refresh.
+
+### News
+
+The bell reads `news.json`, the latest 20 stories from Wowhead's Forever news feed
+(`https://www.wowhead.com/news/rss/forever`). Wowhead has no webhooks and its feed can't be read from another
+site's page, so `scripts/fetch-news.mjs` turns the feed into `news.json` at deploy time, and
+`.github/workflows/news.yml` checks the feed every 15 minutes and starts a deploy when the stories differ from the
+live site's. A new story usually shows up within half an hour. In `npm run dev` the dev server fetches the feed
+itself; `npm run build` doesn't, so a local build has no news. GitHub pauses scheduled workflows after 60 days
+without commits to the repository: if the news stops updating, re-enable **News** in the **Actions** tab.
 
 ## Deployment
 

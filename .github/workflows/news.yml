@@ -1,0 +1,50 @@
+name: News
+
+# Keeps the news bell current. Wowhead has no webhooks and the site is static, so every
+# 15 minutes this reads Wowhead's WoW Forever news feed and, when the stories differ from the
+# deployed news.json, starts the deploy workflow (which writes a fresh news.json). Most runs
+# find nothing new and take a few seconds.
+#
+# GitHub may delay scheduled runs at busy times, and pauses them after 60 days without
+# commits to the repository; re-enable the workflow from the Actions tab if that happens.
+on:
+  schedule:
+    - cron: '7-59/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: news
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Fetch the feed and compare with the deployed news
+        id: news
+        run: node scripts/fetch-news.mjs "$RUNNER_TEMP/news.json" --compare="${SITE_URL:-https://wow.drnz.se}/news.json"
+        env:
+          # The live site; set a SITE_URL repository variable if it moves.
+          SITE_URL: ${{ vars.SITE_URL }}
+
+      # Runs started with the workflow's own token don't trigger other workflows, except
+      # workflow_dispatch, which is what this uses.
+      - name: Deploy the new stories
+        if: steps.news.outputs.changed == 'true'
+        run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref "$DEFAULT_BRANCH"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}

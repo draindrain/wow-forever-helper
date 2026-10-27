@@ -3,6 +3,7 @@ import { MAX_LEVEL } from '../data';
 import { classIcon, factionIcon } from '../lib/icons';
 import type { Character, ClassMeta, Race, Spec } from '../types';
 import { CharacterSwitcher } from './CharacterSwitcher';
+import { NewsBell } from './NewsBell';
 import { TABS, type TabId } from './tabs/types';
 import { Icon } from './ui';
 
@@ -117,6 +118,7 @@ export function Header(props: Props) {
           onEdit={props.onEdit}
         />
       )}
+      <NewsBell />
       <button
         type="button"
         className="icon-button"

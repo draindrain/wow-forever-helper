@@ -45,6 +45,15 @@ jobs:
           SITE_URL: ${{ steps.pages.outputs.base_url }}
           BASE_PATH: ${{ github.event_name == 'pull_request' && format('/{0}/', github.event.repository.name) || format('{0}/', steps.pages.outputs.base_path) }}
 
+      # The news bell's stories. When Wowhead can't be reached, the deployed copy is kept;
+      # with neither, the site deploys without news and the bell stays empty.
+      - name: Fetch news
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        run: node scripts/fetch-news.mjs dist/news.json --fallback="${SITE_URL%/}/news.json"
+        env:
+          SITE_URL: ${{ steps.pages.outputs.base_url }}
+
       - name: Upload site
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v5

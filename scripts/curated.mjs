@@ -217,7 +217,7 @@ export const MILESTONES = [
   { level: 10, title: 'Talent points', text: 'You get your first talent point at 10 and one more every level, 51 in total at 60.', source: 'Forever client talent trees (51 points)', confirmed: true },
   { level: 14, title: 'Cozy Sleeping Bag hunt', text: 'A scavenger hunt in Westfall or the Barrens rewards the Cozy Sleeping Bag, which gives a stacking XP buff and lets you earn rested XP while logged out.', source: 'warcraft.wiki.gg (Forever)', confirmed: true },
   { level: 25, title: 'Legacy challenge', text: 'Reaching 25 completes a Legacy challenge. Legacy Points are earned account-wide and spent per character in the Legacy Trees.', source: 'warcraft.wiki.gg (Forever)', confirmed: true },
-  { level: 40, title: 'Dual talent specialization', text: 'Buy Dual Spec from your class trainer for 10 gold, then swap between two specs freely outside combat.', source: 'Blizzard (warcraft.wiki.gg)', confirmed: true },
+  { level: 40, title: 'Dual talent specialization', text: 'Buy Dual Spec from your class trainer for 50 gold, then swap between two specs freely outside combat or battlegrounds.', source: 'Blizzard (warcraft.wiki.gg)', confirmed: true },
   { level: 40, title: 'Legacy challenge', text: 'Reaching 40 completes another Legacy challenge.', source: 'warcraft.wiki.gg (Forever)', confirmed: true },
   { level: 40, title: 'Riding', text: 'Apprentice Riding is in the Forever client. Classic teaches it at 40; Forever hasn\'t confirmed its level yet.', source: 'Classic value', confirmed: false },
   { level: 60, title: 'Level cap', text: 'Forever stays at 60 for good. Launch raids (Barrow Deeps, Hyjal Summit, Onyxia\'s Lair) open on 9 December 2026.', source: 'Blizzard (warcraft.wiki.gg)', confirmed: true },

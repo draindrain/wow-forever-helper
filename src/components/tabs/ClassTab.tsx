@@ -172,7 +172,7 @@ function MorePanel({ ctx, extraSchools }: { ctx: EventContext; extraSchools: { s
           <div className="spell-text">
             <span className="spell-name">Dual specialization</span>
             <span className="spell-sub">
-              {level >= 40 ? 'Available: 10 gold at your trainer' : 'Level 40 · 10 gold'}
+              {level >= 40 ? 'Available: 50 gold at your trainer' : 'Level 40 · 50 gold'}
             </span>
           </div>
         </li>
